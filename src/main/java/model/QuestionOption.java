@@ -10,6 +10,12 @@ public class QuestionOption {
     public QuestionOption() {
     }
 
+    public QuestionOption(String content, Boolean isCorrect, Integer orderIndex) {
+        this.content = content;
+        this.isCorrect = isCorrect;
+        this.orderIndex = orderIndex;
+    }
+
     public Long getId() {
         return id;
     }

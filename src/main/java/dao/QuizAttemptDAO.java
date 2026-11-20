@@ -1,5 +1,7 @@
 package dao;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import model.Quiz;
@@ -12,33 +14,40 @@ public class QuizAttemptDAO extends DAO {
         super();
     }
 
+    public int countAttemptsByQuiz(Long quizId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM quiz_attempts WHERE quiz_id = ? AND status != 'CANCELLED'";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setLong(1, quizId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+        return 0;
+    }
+
     public QuizAttempt startAttempt(User learner, Quiz quiz) throws SQLException {
-        // TODO: Triển khai truy vấn và kiểm tra nghiệp vụ.
         throw new UnsupportedOperationException("Chưa triển khai QuizAttemptDAO.startAttempt()");
     }
 
     public QuizAttempt submitAttempt(User learner, QuizAttempt attempt, List<StudentAnswer> answers) throws SQLException {
-        // TODO: Triển khai truy vấn và kiểm tra nghiệp vụ.
         throw new UnsupportedOperationException("Chưa triển khai QuizAttemptDAO.submitAttempt()");
     }
 
     public void cancelAttempt(User learner, QuizAttempt attempt) throws SQLException {
-        // TODO: Triển khai truy vấn và kiểm tra nghiệp vụ.
         throw new UnsupportedOperationException("Chưa triển khai QuizAttemptDAO.cancelAttempt()");
     }
 
     public void cancelUnfinishedAttempts(User user) throws SQLException {
-        // TODO: Triển khai truy vấn và kiểm tra nghiệp vụ.
         throw new UnsupportedOperationException("Chưa triển khai QuizAttemptDAO.cancelUnfinishedAttempts()");
     }
 
     public List<QuizAttempt> getHistory(User learner, Quiz quiz) throws SQLException {
-        // TODO: Triển khai truy vấn và kiểm tra nghiệp vụ.
         throw new UnsupportedOperationException("Chưa triển khai QuizAttemptDAO.getHistory()");
     }
 
     public QuizAttempt getResult(User learner, QuizAttempt attempt) throws SQLException {
-        // TODO: Triển khai truy vấn và kiểm tra nghiệp vụ.
         throw new UnsupportedOperationException("Chưa triển khai QuizAttemptDAO.getResult()");
     }
 }
