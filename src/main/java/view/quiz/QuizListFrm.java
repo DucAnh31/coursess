@@ -21,6 +21,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingWorker;
+import javax.swing.UIManager;
 import javax.swing.table.DefaultTableModel;
 import model.Lesson;
 import model.Quiz;
@@ -65,7 +66,6 @@ public class QuizListFrm extends JFrame implements ActionListener {
         topPanel.add(lblLessonTitle, BorderLayout.NORTH);
 
         lblNotice = new JLabel("Đang tải danh sách quiz đang nhận lượt làm mới...");
-        lblNotice.setForeground(new Color(45, 90, 140));
         topPanel.add(lblNotice, BorderLayout.SOUTH);
         root.add(topPanel, BorderLayout.NORTH);
 
@@ -106,7 +106,7 @@ public class QuizListFrm extends JFrame implements ActionListener {
 
     public void loadQuizzes() {
         setControlsEnabled(false);
-        lblNotice.setForeground(new Color(45, 90, 140));
+        lblNotice.setForeground(UIManager.getColor("Label.foreground"));
         lblNotice.setText("Đang tải danh sách quiz...");
 
         new SwingWorker<List<Quiz>, Void>() {
@@ -155,7 +155,7 @@ public class QuizListFrm extends JFrame implements ActionListener {
         }
         Quiz selectedQuiz = quizzes.get(row);
         setControlsEnabled(false);
-        lblNotice.setForeground(new Color(45, 90, 140));
+        lblNotice.setForeground(UIManager.getColor("Label.foreground"));
         lblNotice.setText("Đang khởi tạo lượt làm bài...");
 
         new SwingWorker<QuizAttempt, Void>() {

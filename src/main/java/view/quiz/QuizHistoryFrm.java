@@ -23,6 +23,7 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.UIManager;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
@@ -90,14 +91,12 @@ public class QuizHistoryFrm extends JFrame implements ActionListener {
         topPanel.add(filterPanel, BorderLayout.CENTER);
 
         JPanel scorePanel = new JPanel(new BorderLayout(8, 4));
-        scorePanel.setBackground(new Color(232, 244, 253));
         scorePanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(122, 207, 245)),
+                BorderFactory.createEtchedBorder(),
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)));
         lblBestScore = new JLabel("Điểm cao nhất: —");
         lblBestScore.setFont(new Font("SansSerif", Font.BOLD, 16));
         lblNotice = new JLabel(" ");
-        lblNotice.setForeground(new Color(45, 90, 140));
         scorePanel.add(lblBestScore, BorderLayout.WEST);
         scorePanel.add(lblNotice, BorderLayout.EAST);
         topPanel.add(scorePanel, BorderLayout.SOUTH);
@@ -198,7 +197,7 @@ public class QuizHistoryFrm extends JFrame implements ActionListener {
 
     private void loadHistory(Quiz quiz) {
         btnOpenResult.setEnabled(false);
-        lblNotice.setForeground(new Color(45, 90, 140));
+        lblNotice.setForeground(UIManager.getColor("Label.foreground"));
         lblNotice.setText("Đang tải các lượt đã nộp...");
 
         new SwingWorker<HistoryData, Void>() {

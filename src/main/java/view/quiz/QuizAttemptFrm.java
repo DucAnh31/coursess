@@ -23,6 +23,7 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.UIManager;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
@@ -77,7 +78,6 @@ public class QuizAttemptFrm extends JFrame implements ActionListener {
         topPanel.add(lblQuizTitle, BorderLayout.NORTH);
 
         lblAttemptInfo = new JLabel("Lượt làm #" + (attempt != null ? attempt.getId() : ""));
-        lblAttemptInfo.setForeground(new Color(70, 70, 70));
         topPanel.add(lblAttemptInfo, BorderLayout.SOUTH);
         root.add(topPanel, BorderLayout.NORTH);
 
@@ -89,7 +89,6 @@ public class QuizAttemptFrm extends JFrame implements ActionListener {
 
         JPanel bottomPanel = new JPanel(new BorderLayout(8, 8));
         lblNotice = new JLabel("Các lựa chọn chỉ lưu tạm trong bộ nhớ cho tới khi bạn xác nhận nộp bài.");
-        lblNotice.setForeground(new Color(45, 90, 140));
         bottomPanel.add(lblNotice, BorderLayout.WEST);
 
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
@@ -147,9 +146,8 @@ public class QuizAttemptFrm extends JFrame implements ActionListener {
             Question q = questions.get(i);
             JPanel card = new JPanel(new BorderLayout(6, 6));
             card.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(200, 215, 230)),
+                    BorderFactory.createEtchedBorder(),
                     BorderFactory.createEmptyBorder(10, 12, 10, 12)));
-            card.setBackground(Color.WHITE);
 
             JPanel header = new JPanel(new BorderLayout(8, 0));
             header.setOpaque(false);
@@ -231,7 +229,7 @@ public class QuizAttemptFrm extends JFrame implements ActionListener {
 
         List<StudentAnswer> draftAnswers = buildDraftAnswers();
         setBusy(true);
-        lblNotice.setForeground(new Color(45, 90, 140));
+        lblNotice.setForeground(UIManager.getColor("Label.foreground"));
         lblNotice.setText("Đang chấm điểm và lưu kết quả...");
 
         new SwingWorker<QuizAttempt, Void>() {
@@ -274,7 +272,7 @@ public class QuizAttemptFrm extends JFrame implements ActionListener {
         }
 
         setBusy(true);
-        lblNotice.setForeground(new Color(45, 90, 140));
+        lblNotice.setForeground(UIManager.getColor("Label.foreground"));
         lblNotice.setText("Đang hủy lượt làm bài...");
 
         new SwingWorker<Void, Void>() {

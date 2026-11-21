@@ -65,9 +65,8 @@ public class QuizResultFrm extends JFrame implements ActionListener {
         topPanel.add(lblQuizTitle, BorderLayout.NORTH);
 
         JPanel summaryPanel = new JPanel(new BorderLayout(4, 4));
-        summaryPanel.setBackground(new Color(232, 244, 253));
         summaryPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(122, 207, 245)),
+                BorderFactory.createEtchedBorder(),
                 BorderFactory.createEmptyBorder(10, 12, 10, 12)));
         lblScoreSummary = new JLabel("—");
         lblScoreSummary.setFont(new Font("SansSerif", Font.BOLD, 20));
@@ -77,7 +76,6 @@ public class QuizResultFrm extends JFrame implements ActionListener {
         topPanel.add(summaryPanel, BorderLayout.CENTER);
 
         lblNotice = new JLabel(" ");
-        lblNotice.setForeground(new Color(45, 90, 140));
         topPanel.add(lblNotice, BorderLayout.SOUTH);
         root.add(topPanel, BorderLayout.NORTH);
 
