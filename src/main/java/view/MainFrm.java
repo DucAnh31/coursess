@@ -1,6 +1,7 @@
 package view;
 
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Window;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -17,7 +18,8 @@ public class MainFrm extends JFrame {
         super("COURSESS");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setSize(900, 600);
-        setResizable(false);
+        setMinimumSize(new Dimension(900, 600));
+        setResizable(true);
         setLocationRelativeTo(null);
         setScreen(new LoginFrm(), "Đăng nhập");
     }
