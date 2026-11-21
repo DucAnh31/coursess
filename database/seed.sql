@@ -36,12 +36,6 @@ INSERT INTO lessons (id, title, video_url, order_index, is_visible, course_id) V
     (6, 'Cú pháp Python cơ bản', 'https://www.youtube.com/watch?v=rfscVS0vtbw', 1, 1, 3),
     (7, 'Các lệnh Git cơ bản', 'https://www.youtube.com/watch?v=RGOj5yH7evk', 1, 1, 5);
 
--- Thông tin tài liệu giả lập, chưa có file thực tế nên để is_available = 0.
-
-INSERT INTO lesson_documents (id, name, file_path, file_size, is_available, lesson_id) VALUES
-    (1, 'Ghi chú Java cơ bản.pdf', 'storage/documents/java-notes.pdf', 102400, 0, 1),
-    (2, 'Bài tập SQL.pdf', 'storage/documents/sql-exercises.pdf', 153600, 0, 4);
-
 INSERT INTO course_members (id, enrolled_at, student_id, course_id) VALUES
     (1, '2026-11-15 08:00:00', 4, 1),
     (2, '2026-11-15 09:00:00', 5, 1),
