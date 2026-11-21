@@ -1,6 +1,7 @@
 package view.course;
 
 import dao.CourseDAO;
+import dao.LessonDAO;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -28,9 +29,11 @@ import javax.swing.ListSelectionModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import model.Course;
+import model.Lesson;
 import model.User;
 import model.enums.CourseStatus;
 import model.enums.UserRole;
+import view.quiz.ManageQuizFrm;
 
 public class TeacherCourseListFrm extends JFrame implements ActionListener {
     private final User teacher;
@@ -47,6 +50,7 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
     private DefaultTableModel tableModel;
     private JButton btnCreateCourse;
     private JButton btnEditCourse;
+    private JButton btnCreateQuiz;
     private JButton btnOpenCourse;
     private JButton btnAddLesson;
     private JButton btnRefresh;
@@ -59,7 +63,7 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
     public TeacherCourseListFrm(User teacher) {
         super("Quản lý khóa học - COURSESS");
         this.teacher = teacher != null ? teacher : createDefaultTeacher();
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(960, 600);
         setLocationRelativeTo(null);
 
@@ -193,6 +197,10 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
         btnEditCourse.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btnEditCourse.addActionListener(this);
 
+        btnCreateQuiz = new JButton("Tạo quiz");
+        btnCreateQuiz.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnCreateQuiz.addActionListener(this);
+
         btnAddLesson = new JButton("Thêm bài học");
         btnAddLesson.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btnAddLesson.addActionListener(this);
@@ -203,6 +211,7 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
 
         leftActions.add(btnCreateCourse);
         leftActions.add(btnEditCourse);
+        leftActions.add(btnCreateQuiz);
         leftActions.add(btnAddLesson);
         leftActions.add(btnOpenCourse);
 
@@ -318,6 +327,48 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
         new CourseCreateFrm(teacher, selected).setVisible(true);
     }
 
+    private void openCreateQuiz() {
+        Course selected = getSelectedCourse();
+        if (selected == null) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn một khóa học trong bảng để tạo quiz!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            LessonDAO lessonDAO = new LessonDAO();
+            List<Lesson> courseLessons = lessonDAO.getLessonsOfCourse(selected.getId());
+            if (courseLessons.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Khóa học này chưa có bài học nào. Vui lòng thêm bài học trước khi tạo quiz!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            if (courseLessons.size() == 1) {
+                new ManageQuizFrm(teacher, courseLessons.get(0)).setVisible(true);
+                return;
+            }
+            String[] lessonTitles = courseLessons.stream()
+                    .map(l -> l.getOrderIndex() + ". " + l.getTitle())
+                    .toArray(String[]::new);
+            String picked = (String) JOptionPane.showInputDialog(
+                    this,
+                    "Chọn bài học cần tạo quiz:",
+                    "Tạo quiz cho bài học",
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    lessonTitles,
+                    lessonTitles[0]
+            );
+            if (picked != null) {
+                for (int i = 0; i < lessonTitles.length; i++) {
+                    if (lessonTitles[i].equals(picked)) {
+                        new ManageQuizFrm(teacher, courseLessons.get(i)).setVisible(true);
+                        break;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Lỗi tải bài học: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     private void openSelectedCourse() {
         Course selected = getSelectedCourse();
         if (selected == null) {
@@ -334,6 +385,8 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
             createFrm.setVisible(true);
         } else if (event.getSource() == btnEditCourse) {
             editSelectedCourse();
+        } else if (event.getSource() == btnCreateQuiz) {
+            openCreateQuiz();
         } else if (event.getSource() == btnOpenCourse) {
             openSelectedCourse();
         } else if (event.getSource() == btnAddLesson) {

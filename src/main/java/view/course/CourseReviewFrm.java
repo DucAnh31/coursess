@@ -16,6 +16,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.net.URI;
 import java.sql.SQLException;
@@ -38,10 +40,11 @@ import model.Course;
 import model.Lesson;
 import model.User;
 import model.enums.CourseStatus;
+import view.quiz.ManageQuizFrm;
 
 public class CourseReviewFrm extends JFrame implements ActionListener {
     private final User teacher;
-    private Course course;
+    private final Course course;
     private CourseDAO courseDAO;
     private LessonDAO lessonDAO;
 
@@ -62,6 +65,7 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
     private JButton btnPublish;
     private JButton btnAddLesson;
     private JButton btnEditCourse;
+    private JButton btnCreateQuiz;
     private JButton btnWatchVideo;
     private JButton btnBack;
 
@@ -81,6 +85,13 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Lỗi kết nối cơ sở dữ liệu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
+
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowActivated(WindowEvent e) {
+                loadCourseDetails();
+            }
+        });
 
         initComponents();
         loadCourseDetails();
@@ -147,9 +158,9 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         infoPanel.add(lblCategoryValue, gbc);
 
         gbc.gridx = 2;
-        JLabel lblLC = new JLabel("Tổng số bài học:");
-        lblLC.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        infoPanel.add(lblLC, gbc);
+        JLabel lblL = new JLabel("Tổng số bài học:");
+        lblL.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        infoPanel.add(lblL, gbc);
 
         gbc.gridx = 3;
         lblLessonCountValue = new JLabel("0 bài học");
@@ -252,6 +263,11 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         btnEditCourse.addActionListener(this);
         leftActions.add(btnEditCourse);
 
+        btnCreateQuiz = new JButton("+ Tạo quiz");
+        btnCreateQuiz.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnCreateQuiz.addActionListener(this);
+        leftActions.add(btnCreateQuiz);
+
         btnWatchVideo = new JButton("Mở video bài học");
         btnWatchVideo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btnWatchVideo.addActionListener(this);
@@ -280,64 +296,79 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
     }
 
     public void loadCourseDetails() {
-        if (course == null || course.getId() == null) return;
+        if (courseDAO == null || course == null || course.getId() == null) return;
+
         try {
             Course freshCourse = courseDAO.findById(course.getId());
             if (freshCourse != null) {
-                this.course = freshCourse;
+                course.setTitle(freshCourse.getTitle());
+                course.setDescription(freshCourse.getDescription());
+                course.setCategory(freshCourse.getCategory());
+                course.setStatus(freshCourse.getStatus());
+                course.setThumbnailUrl(freshCourse.getThumbnailUrl());
             }
 
-            lblTitleValue.setText(course.getTitle());
-            lblCategoryValue.setText((course.getCategory() != null && course.getCategory().getName() != null)
-                    ? course.getCategory().getName()
-                    : "Chưa phân loại");
+            lblTitleValue.setText(course.getTitle() != null ? course.getTitle() : "Chưa đặt tên");
+            lblDescValue.setText(course.getDescription() != null && !course.getDescription().isBlank() ? course.getDescription() : "Chưa có mô tả");
+
+            String categoryName = (course.getCategory() != null && course.getCategory().getName() != null)
+                    ? course.getCategory().getName() : "Chưa phân loại";
+            lblCategoryValue.setText(categoryName);
 
             updateStatusLabel(course.getStatus());
 
-            String desc = course.getDescription();
-            if (desc != null && desc.length() > 120) {
-                desc = desc.substring(0, 117) + "...";
+            String thumbPath = course.getThumbnailUrl();
+            if (thumbPath != null && !thumbPath.isBlank()) {
+                File f = new File(thumbPath);
+                if (f.exists()) {
+                    try {
+                        ImageIcon icon = new ImageIcon(f.getAbsolutePath());
+                        Image img = icon.getImage().getScaledInstance(130, 80, Image.SCALE_SMOOTH);
+                        lblThumbnailPreview.setIcon(new ImageIcon(img));
+                        lblThumbnailPreview.setText("");
+                    } catch (Exception ex) {
+                        lblThumbnailPreview.setIcon(null);
+                        lblThumbnailPreview.setText("Lỗi ảnh bìa");
+                    }
+                } else {
+                    lblThumbnailPreview.setIcon(null);
+                    lblThumbnailPreview.setText("Ảnh không tồn tại");
+                }
+            } else {
+                lblThumbnailPreview.setIcon(null);
+                lblThumbnailPreview.setText("Chưa có ảnh bìa");
             }
-            lblDescValue.setText(desc != null ? desc : "");
 
             lessons = lessonDAO.getLessonsOfCourse(course.getId());
             tableModel.setRowCount(0);
+
             for (Lesson l : lessons) {
-                String docName = "Không có";
+                String docInfo = "Không có";
                 if (l.getDocuments() != null && !l.getDocuments().isEmpty()) {
-                    docName = l.getDocuments().get(0).getName();
+                    docInfo = l.getDocuments().size() + " tệp đính kèm";
                 }
                 tableModel.addRow(new Object[]{
                         l.getOrderIndex(),
                         l.getId(),
                         l.getTitle(),
-                        l.getVideoUrl(),
-                        docName
+                        (l.getVideoUrl() != null && !l.getVideoUrl().isBlank()) ? l.getVideoUrl() : "Chưa có URL",
+                        docInfo
                 });
             }
 
             lblLessonCountValue.setText(lessons.size() + " bài học");
 
-            String thumbUrl = course.getThumbnailUrl();
-            if (thumbUrl != null && !thumbUrl.trim().isEmpty()) {
-                File imgFile = new File(thumbUrl.trim());
-                if (imgFile.exists()) {
-                    try {
-                        ImageIcon icon = new ImageIcon(imgFile.getAbsolutePath());
-                        Image img = icon.getImage().getScaledInstance(130, 80, Image.SCALE_SMOOTH);
-                        lblThumbnailPreview.setIcon(new ImageIcon(img));
-                        lblThumbnailPreview.setText("");
-                    } catch (Exception e) {
-                        lblThumbnailPreview.setIcon(null);
-                        lblThumbnailPreview.setText("Lỗi xem ảnh");
-                    }
-                } else {
-                    lblThumbnailPreview.setIcon(null);
-                    lblThumbnailPreview.setText("Không tìm thấy ảnh");
-                }
+            if (course.getTitle() != null && !course.getTitle().isBlank()
+                    && course.getDescription() != null && !course.getDescription().isBlank()) {
+                lblCheckTitleDesc.setText("• Tên và mô tả khóa học: Đạt (Đã đầy đủ)");
             } else {
-                lblThumbnailPreview.setIcon(null);
-                lblThumbnailPreview.setText("Chưa có ảnh bìa");
+                lblCheckTitleDesc.setText("• Tên và mô tả khóa học: Chưa đạt (Cần điền đầy đủ tên và mô tả)");
+            }
+
+            if (course.getCategory() != null && course.getCategory().getId() != null) {
+                lblCheckCategory.setText("• Danh mục khóa học: Đạt (" + categoryName + ")");
+            } else {
+                lblCheckCategory.setText("• Danh mục khóa học: Chưa đạt (Chưa chọn danh mục)");
             }
 
             if (lessons.isEmpty()) {
@@ -394,8 +425,8 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         int confirm = JOptionPane.showConfirmDialog(
                 this,
                 "Bạn có chắc chắn muốn xuất bản khóa học \"" + course.getTitle() + "\" không?\n" +
-                "Khóa học sẽ chuyển sang trạng thái OPEN và cho phép học sinh ghi danh học.",
-                "Xác nhận xuất bản",
+                "Sau khi xuất bản, học sinh có thể nhìn thấy và đăng ký học.",
+                "Xác nhận xuất bản khóa học",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
 
@@ -422,6 +453,16 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Lỗi xuất bản khóa học: " + e.getMessage(), "Lỗi SQL", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void openCreateQuiz() {
+        int selectedRow = tblLessons.getSelectedRow();
+        if (selectedRow < 0 || selectedRow >= lessons.size()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn một bài học trong bảng để tạo quiz!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        Lesson selectedLesson = lessons.get(selectedRow);
+        new ManageQuizFrm(teacher, selectedLesson).setVisible(true);
     }
 
     private void openSelectedLessonVideo() {
@@ -459,6 +500,8 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
             publishCourse();
         } else if (event.getSource() == btnEditCourse) {
             new CourseCreateFrm(teacher, course).setVisible(true);
+        } else if (event.getSource() == btnCreateQuiz) {
+            openCreateQuiz();
         } else if (event.getSource() == btnWatchVideo) {
             openSelectedLessonVideo();
         } else if (event.getSource() == btnAddLesson) {

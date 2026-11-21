@@ -43,12 +43,8 @@ import model.Course;
 import model.Lesson;
 import model.LessonDocument;
 import model.User;
+import view.quiz.ManageQuizFrm;
 
-/**
- * Màn hình Thêm bài học & Quản lý bài học trong khóa học.
- * Tham khảo cấu trúc khung từ prototype.html (Form thêm bài học + Bảng danh sách bài học + Điều hướng).
- * Thiết kế thuần Swing, tối giản, rõ ràng, không màu mè.
- */
 public class LessonAddFrm extends JFrame implements ActionListener {
     private final User teacher;
     private final Course course;
@@ -66,6 +62,7 @@ public class LessonAddFrm extends JFrame implements ActionListener {
     private JTable tblLessons;
     private DefaultTableModel tableModel;
     private JButton btnReviewCourse;
+    private JButton btnCreateQuiz;
     private JButton btnClose;
 
     private File selectedAttachmentFile = null;
@@ -243,6 +240,13 @@ public class LessonAddFrm extends JFrame implements ActionListener {
 
         JPanel bottomPanel = new JPanel(new BorderLayout());
 
+        JPanel leftActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        btnCreateQuiz = new JButton("Tạo quiz cho bài học");
+        btnCreateQuiz.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnCreateQuiz.addActionListener(this);
+        leftActions.add(btnCreateQuiz);
+        bottomPanel.add(leftActions, BorderLayout.WEST);
+
         JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         btnClose = new JButton("Đóng");
         btnClose.setFont(new Font("Segoe UI", Font.PLAIN, 13));
@@ -402,7 +406,15 @@ public class LessonAddFrm extends JFrame implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent event) {
-        if (event.getSource() == btnChooseAttachment) {
+        if (event.getSource() == btnCreateQuiz) {
+            int selectedRow = tblLessons.getSelectedRow();
+            if (selectedRow < 0 || selectedRow >= lessons.size()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn một bài học trong bảng để tạo quiz!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            Lesson selectedLesson = lessons.get(selectedRow);
+            new ManageQuizFrm(teacher, selectedLesson).setVisible(true);
+        } else if (event.getSource() == btnChooseAttachment) {
             chooseAttachment();
         } else if (event.getSource() == btnTestVideo) {
             openVideo(txtVideoUrl.getText().trim());
