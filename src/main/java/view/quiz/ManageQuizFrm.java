@@ -56,7 +56,9 @@ public class ManageQuizFrm extends JFrame implements ActionListener {
             this.quizDAO = new QuizDAO();
             this.quizAttemptDAO = new QuizAttemptDAO();
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Lỗi kết nối cơ sở dữ liệu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            if (!java.awt.GraphicsEnvironment.isHeadless()) {
+                JOptionPane.showMessageDialog(this, "Lỗi kết nối cơ sở dữ liệu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
         }
 
         initComponents();
