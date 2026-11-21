@@ -8,6 +8,9 @@ btl-cnpm/
 ├── database/
 │   ├── schema.sql
 │   └── seed.sql
+├── storage/
+│   ├── thumbnails/
+│   └── documents/
 ├── src/main/java/
 │   ├── app/Main.java
 │   ├── model/

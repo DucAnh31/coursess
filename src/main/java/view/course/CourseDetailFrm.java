@@ -5,6 +5,10 @@ import dao.CourseMemberDAO;
 import dao.LessonDAO;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
@@ -99,47 +103,75 @@ public class CourseDetailFrm extends JPanel implements ActionListener {
     }
 
     private void initComponents() {
+        JPanel headerPanel = new JPanel(new BorderLayout(4, 4));
+        headerPanel.setBorder(BorderFactory.createEtchedBorder());
+        JPanel headerContent = new JPanel(new BorderLayout(4, 4));
+        headerContent.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
+        JLabel title = new JLabel("THÔNG TIN CHI TIẾT KHÓA HỌC");
+        headerContent.add(title, BorderLayout.NORTH);
+        headerContent.add(new JLabel("Xem thông tin khóa học, nội dung bài học và tình trạng ghi danh."),
+                BorderLayout.SOUTH);
+        headerPanel.add(headerContent, BorderLayout.CENTER);
+
         JPanel information = new JPanel(new GridLayout(4, 1, 5, 8));
         information.add(lblTitle);
         information.add(lblTeacher);
         information.add(lblCategory);
         information.add(lblStatus);
+        outCourse.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Thông tin tổng quan khóa học"),
+                BorderFactory.createEmptyBorder(5, 8, 5, 8)));
         outCourse.add(lblThumbnail, BorderLayout.WEST);
         outCourse.add(information, BorderLayout.CENTER);
 
         txtDescription.setEditable(false);
         txtDescription.setLineWrap(true);
         txtDescription.setWrapStyleWord(true);
+        txtDescription.setRows(3);
         JScrollPane description = new JScrollPane(txtDescription);
         description.setBorder(BorderFactory.createTitledBorder("Mô tả khóa học"));
+        outLessons.setFixedCellHeight(26);
         JScrollPane lessons = new JScrollPane(outLessons);
         lessons.setBorder(BorderFactory.createTitledBorder("Danh sách bài học"));
+        JPanel lessonContent = new JPanel(new BorderLayout(10, 10));
+        lessonContent.add(description, BorderLayout.NORTH);
+        lessonContent.add(lessons, BorderLayout.CENTER);
         JPanel body = new JPanel(new BorderLayout(10, 10));
-        body.add(description, BorderLayout.NORTH);
-        body.add(lessons, BorderLayout.CENTER);
+        body.add(outCourse, BorderLayout.NORTH);
+        body.add(lessonContent, BorderLayout.CENTER);
 
-        JPanel buttons = new JPanel();
-        buttons.add(subEnroll);
-        buttons.add(subOpenLearning);
-        buttons.add(subBack);
+        JPanel leftActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        leftActions.add(subEnroll);
+        leftActions.add(subOpenLearning);
+        JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightActions.add(subBack);
+        JPanel buttons = new JPanel(new BorderLayout());
+        buttons.add(leftActions, BorderLayout.WEST);
+        buttons.add(rightActions, BorderLayout.EAST);
         subEnroll.addActionListener(this);
         subOpenLearning.addActionListener(this);
         subBack.addActionListener(this);
         subEnroll.setEnabled(false);
         subOpenLearning.setEnabled(false);
-        JPanel footer = new JPanel(new BorderLayout());
-        JPanel notices = new JPanel(new GridLayout(2, 1, 5, 5));
-        notices.add(outEnrollment);
-        notices.add(outNotice);
+        JPanel notices = new JPanel(new BorderLayout(10, 0));
+        notices.add(outEnrollment, BorderLayout.WEST);
+        notices.add(outNotice, BorderLayout.CENTER);
+        JPanel footer = new JPanel(new BorderLayout(8, 8));
         footer.add(notices, BorderLayout.NORTH);
         footer.add(buttons, BorderLayout.SOUTH);
 
-        JPanel content = new JPanel(new BorderLayout(10, 15));
-        content.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        content.add(outCourse, BorderLayout.NORTH);
+        JPanel content = new JPanel(new BorderLayout(12, 12));
+        content.setBorder(BorderFactory.createEmptyBorder(15, 18, 15, 18));
+        content.add(headerPanel, BorderLayout.NORTH);
         content.add(body, BorderLayout.CENTER);
         content.add(footer, BorderLayout.SOUTH);
         add(content, BorderLayout.CENTER);
+        applyFont(this);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        outEnrollment.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        subEnroll.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        subOpenLearning.setFont(new Font("Segoe UI", Font.BOLD, 13));
     }
 
     @Override
@@ -160,7 +192,12 @@ public class CourseDetailFrm extends JPanel implements ActionListener {
                 outNotice.setText(e.getMessage());
             }
         } else if (event.getSource() == subOpenLearning && member != null) {
-            MainFrm.showScreen(this, new CourseLearningFrm(student, course, this), "Học theo khóa học");
+            try {
+                MainFrm.showScreen(this, new CourseLearningFrm(student, course, this), "Học theo khóa học");
+            } catch (SQLException e) {
+                outNotice.setText(e.getMessage());
+                JOptionPane.showMessageDialog(this, e.getMessage(), "Không thể vào học", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
@@ -195,4 +232,14 @@ public class CourseDetailFrm extends JPanel implements ActionListener {
         }
         return new ImageIcon(image.getScaledInstance(width, height, Image.SCALE_SMOOTH));
     }
+
+    private void applyFont(Component component) {
+        component.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                applyFont(child);
+            }
+        }
+    }
+
 }

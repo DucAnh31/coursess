@@ -2,6 +2,10 @@ package view.course;
 
 import dao.CourseMemberDAO;
 import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -55,9 +59,20 @@ public class MyCoursesFrm extends JPanel implements ActionListener {
     }
 
     private void initComponents() {
+        JPanel headerPanel = new JPanel(new BorderLayout(4, 4));
+        headerPanel.setBorder(BorderFactory.createEtchedBorder());
+        JPanel headerContent = new JPanel(new BorderLayout(4, 4));
+        headerContent.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
+        JLabel title = new JLabel("KHÓA HỌC ĐÃ THAM GIA");
+        String studentName = student.getFullName() == null ? "Học sinh" : student.getFullName();
+        headerContent.add(title, BorderLayout.NORTH);
+        headerContent.add(new JLabel("Học sinh: " + studentName
+                + " | Xem các khóa đã ghi danh và tiếp tục học."), BorderLayout.SOUTH);
+        headerPanel.add(headerContent, BorderLayout.CENTER);
+
         subBack.addActionListener(this);
         outsubCourses.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        outsubCourses.setRowHeight(32);
+        outsubCourses.setRowHeight(26);
         outsubCourses.setAutoCreateRowSorter(true);
         outsubCourses.getColumnModel().getColumn(0).setPreferredWidth(300);
         outsubCourses.addMouseListener(new MouseAdapter() {
@@ -70,19 +85,25 @@ public class MyCoursesFrm extends JPanel implements ActionListener {
                 }
             }
         });
+        JScrollPane scrollPane = new JScrollPane(outsubCourses);
+        scrollPane.setColumnHeaderView(outsubCourses.getTableHeader());
+        scrollPane.setBorder(BorderFactory.createTitledBorder("Danh sách khóa học đã ghi danh"));
 
-        JPanel buttons = new JPanel();
-        buttons.add(subBack);
-        JPanel footer = new JPanel(new BorderLayout());
+        JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightActions.add(subBack);
+        JPanel footer = new JPanel(new BorderLayout(8, 8));
         footer.add(outNotice, BorderLayout.NORTH);
-        footer.add(buttons, BorderLayout.SOUTH);
+        footer.add(rightActions, BorderLayout.SOUTH);
 
-        JPanel content = new JPanel(new BorderLayout(10, 15));
-        content.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        content.add(new JLabel("Khóa học đã tham gia"), BorderLayout.NORTH);
-        content.add(new JScrollPane(outsubCourses), BorderLayout.CENTER);
+        JPanel content = new JPanel(new BorderLayout(12, 12));
+        content.setBorder(BorderFactory.createEmptyBorder(15, 18, 15, 18));
+        content.add(headerPanel, BorderLayout.NORTH);
+        content.add(scrollPane, BorderLayout.CENTER);
         content.add(footer, BorderLayout.SOUTH);
         add(content, BorderLayout.CENTER);
+        applyFont(this);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        outsubCourses.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
     }
 
     @Override
@@ -103,4 +124,14 @@ public class MyCoursesFrm extends JPanel implements ActionListener {
             }
         }
     }
+
+    private void applyFont(Component component) {
+        component.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                applyFont(child);
+            }
+        }
+    }
+
 }
