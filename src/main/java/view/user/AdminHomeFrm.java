@@ -13,11 +13,13 @@ import javax.swing.SwingConstants;
 import model.User;
 import view.MainFrm;
 import view.admin.CategoryManageFrm;
+import view.admin.UserManageFrm;
 
 public class AdminHomeFrm extends JPanel implements ActionListener {
     private final User admin;
     private final JLabel lblWelcome = new JLabel("", SwingConstants.CENTER);
     private final JButton btnCategories = new JButton("Quản lý danh mục");
+    private final JButton btnUsers = new JButton("Quản lý tài khoản");
     private final JButton btnProfile = new JButton("Thông tin cá nhân");
     private final JButton btnLogout = new JButton("Đăng xuất");
 
@@ -30,11 +32,13 @@ public class AdminHomeFrm extends JPanel implements ActionListener {
     private void initComponents() {
         lblWelcome.setText("Xin chào, " + admin.getFullName());
         JPanel buttons = new JPanel();
+        buttons.add(btnUsers);
         buttons.add(btnCategories);
         buttons.add(btnProfile);
         buttons.add(btnLogout);
         btnProfile.addActionListener(this);
         btnCategories.addActionListener(this);
+        btnUsers.addActionListener(this);
         btnLogout.addActionListener(this);
 
         JPanel content = new JPanel(new BorderLayout(10, 20));
@@ -46,7 +50,14 @@ public class AdminHomeFrm extends JPanel implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent event) {
-        if (event.getSource() == btnCategories) {
+        if (event.getSource() == btnUsers) {
+            try {
+                MainFrm.showScreen(this, new UserManageFrm(admin), "Quản lý tài khoản");
+            } catch (IllegalArgumentException | SQLException e) {
+                JOptionPane.showMessageDialog(this, e.getMessage(), "Không thể mở quản lý tài khoản",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (event.getSource() == btnCategories) {
             try {
                 MainFrm.showScreen(this, new CategoryManageFrm(admin), "Quản lý danh mục");
             } catch (IllegalArgumentException | SQLException e) {

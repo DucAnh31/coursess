@@ -6,6 +6,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import model.User;
 import model.enums.UserRole;
 import org.mindrot.jbcrypt.BCrypt;
@@ -24,13 +26,8 @@ public class UserDAO extends DAO {
             ps.setString(1, username.strip());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next() && BCrypt.checkpw(new String(password), rs.getString("password_hash"))) {
-                    User user = new User();
-                    user.setId(rs.getLong("id"));
-                    user.setFullName(rs.getString("full_name"));
-                    user.setUsername(rs.getString("username"));
+                    User user = readUser(rs);
                     user.setPasswordHash(rs.getString("password_hash"));
-                    user.setRole(UserRole.valueOf(rs.getString("role")));
-                    user.setIsActive(rs.getBoolean("is_active"));
                     return user;
                 }
             }
@@ -109,6 +106,68 @@ public class UserDAO extends DAO {
                 throw new SQLException("Tài khoản đã thay đổi hoặc bị khóa. Vui lòng đăng nhập lại.");
             }
         }
+    }
+
+    public List<User> searchUsers(String keyword) throws SQLException {
+        List<User> users = new ArrayList<>();
+        String sql = "SELECT id, full_name, username, role, is_active FROM users "
+                + "WHERE LOWER(username) LIKE LOWER(?) OR LOWER(full_name) LIKE LOWER(?) "
+                + "ORDER BY username, id";
+        String search = "%" + (keyword == null ? "" : keyword.strip()) + "%";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, search);
+            ps.setString(2, search);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    users.add(readUser(rs));
+                }
+            }
+        }
+        return users;
+    }
+
+    public User findById(Long userId) throws SQLException {
+        String sql = "SELECT id, full_name, username, role, is_active FROM users WHERE id = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setObject(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return readUser(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    public void updateActive(Long adminId, Long userId, boolean active) throws SQLException {
+        if (adminId == null || adminId <= 0 || userId == null || userId <= 0) {
+            throw new IllegalArgumentException("Thông tin tài khoản không hợp lệ.");
+        }
+        User admin = findById(adminId);
+        if (admin == null || admin.getRole() != UserRole.ADMIN || !Boolean.TRUE.equals(admin.getIsActive())) {
+            throw new SQLException("Chỉ quản trị viên đang hoạt động được khóa hoặc mở khóa tài khoản.");
+        }
+        if (!active && adminId.equals(userId)) {
+            throw new IllegalArgumentException("Bạn không thể tự khóa tài khoản đang sử dụng.");
+        }
+        String sql = "UPDATE users SET is_active = ? WHERE id = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setBoolean(1, active);
+            ps.setLong(2, userId);
+            if (ps.executeUpdate() == 0) {
+                throw new SQLException("Tài khoản không tồn tại.");
+            }
+        }
+    }
+
+    private User readUser(ResultSet rs) throws SQLException {
+        User user = new User();
+        user.setId(rs.getLong("id"));
+        user.setFullName(rs.getString("full_name"));
+        user.setUsername(rs.getString("username"));
+        user.setRole(UserRole.valueOf(rs.getString("role")));
+        user.setIsActive(rs.getBoolean("is_active"));
+        return user;
     }
 
     private String validateText(String value, String fieldName) {

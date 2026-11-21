@@ -1,6 +1,7 @@
 package view.admin;
 
 import dao.CategoryDAO;
+import dao.UserDAO;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
@@ -167,6 +168,7 @@ public class CategoryManageFrm extends JPanel implements ActionListener {
     }
 
     private void loadCategories() throws SQLException {
+        checkAdmin();
         List<Category> result;
         try (CategoryDAO dao = new CategoryDAO()) {
             result = dao.getAllCategories();
@@ -179,6 +181,16 @@ public class CategoryManageFrm extends JPanel implements ActionListener {
         }
         outNotice.setText(categories.isEmpty() ? "Chưa có danh mục. Bấm Thêm mới để bắt đầu."
                 : "Có " + categories.size() + " danh mục. Chọn một dòng để sửa hoặc xóa.");
+    }
+
+    private void checkAdmin() throws SQLException {
+        try (UserDAO dao = new UserDAO()) {
+            User current = dao.findById(admin.getId());
+            if (current == null || current.getRole() != UserRole.ADMIN || !Boolean.TRUE.equals(current.getIsActive())) {
+                admin.setIsActive(false);
+                throw new SQLException("Tài khoản không còn quyền quản trị hoặc đã bị khóa. Vui lòng đăng xuất.");
+            }
+        }
     }
 
     private void clearForm() {
@@ -216,6 +228,7 @@ public class CategoryManageFrm extends JPanel implements ActionListener {
             category.setDescription(inDescription.getText());
             boolean adding = selectedCategoryId == null;
             try (CategoryDAO dao = new CategoryDAO()) {
+                checkAdmin();
                 if (adding) {
                     dao.addCategory(category);
                 } else {
@@ -233,6 +246,7 @@ public class CategoryManageFrm extends JPanel implements ActionListener {
                 return;
             }
             try (CategoryDAO dao = new CategoryDAO()) {
+                checkAdmin();
                 dao.deleteCategory(selectedCategoryId);
             } catch (IllegalArgumentException | SQLException e) {
                 JOptionPane.showMessageDialog(this, e.getMessage(), "Không thể xóa danh mục", JOptionPane.ERROR_MESSAGE);
