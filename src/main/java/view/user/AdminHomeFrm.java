@@ -3,6 +3,7 @@ package view.user;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.SQLException;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -11,10 +12,12 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import model.User;
 import view.MainFrm;
+import view.admin.CategoryManageFrm;
 
 public class AdminHomeFrm extends JPanel implements ActionListener {
     private final User admin;
     private final JLabel lblWelcome = new JLabel("", SwingConstants.CENTER);
+    private final JButton btnCategories = new JButton("Quản lý danh mục");
     private final JButton btnProfile = new JButton("Thông tin cá nhân");
     private final JButton btnLogout = new JButton("Đăng xuất");
 
@@ -27,9 +30,11 @@ public class AdminHomeFrm extends JPanel implements ActionListener {
     private void initComponents() {
         lblWelcome.setText("Xin chào, " + admin.getFullName());
         JPanel buttons = new JPanel();
+        buttons.add(btnCategories);
         buttons.add(btnProfile);
         buttons.add(btnLogout);
         btnProfile.addActionListener(this);
+        btnCategories.addActionListener(this);
         btnLogout.addActionListener(this);
 
         JPanel content = new JPanel(new BorderLayout(10, 20));
@@ -41,7 +46,14 @@ public class AdminHomeFrm extends JPanel implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent event) {
-        if (event.getSource() == btnProfile) {
+        if (event.getSource() == btnCategories) {
+            try {
+                MainFrm.showScreen(this, new CategoryManageFrm(admin), "Quản lý danh mục");
+            } catch (IllegalArgumentException | SQLException e) {
+                JOptionPane.showMessageDialog(this, e.getMessage(), "Không thể mở quản lý danh mục",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (event.getSource() == btnProfile) {
             MainFrm.showScreen(this, new ProfileFrm(admin), "Thông tin cá nhân");
         } else if (event.getSource() == btnLogout) {
             int choice = JOptionPane.showConfirmDialog(this, "Bạn muốn đăng xuất?", "Đăng xuất",
