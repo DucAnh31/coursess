@@ -217,6 +217,37 @@ public class M3SelfTest {
 
             assertThrows("12. Lượt đã SUBMITTED không được hủy", IllegalStateException.class,
                     () -> aDao.cancelAttempt(user(4), pyAtt));
+
+            assertThrows("12b. Người học khác không xem được chi tiết kết quả", SecurityException.class,
+                    () -> aDao.getResult(user(5), pyAtt));
+
+            QuizAttempt res = aDao.getResult(user(4), pyAtt);
+            assertTrue("12c. getResult trả đầy đủ chi tiết 3 câu kèm đáp án đúng",
+                    res.getAnswers().size() == 3
+                            && res.getAnswers().get(1).getSelectedOption().getId().equals(pyOptA[1])
+                            && !res.getAnswers().get(1).getIsCorrect());
+
+            try (PreparedStatement ps = aDao.getConnection().prepareStatement("UPDATE quizzes SET status = 'PUBLISHED' WHERE id = ?")) {
+                ps.setLong(1, pyQuizId);
+                ps.executeUpdate();
+            }
+            QuizAttempt dupAttempt = aDao.startAttempt(user(4), quiz(pyQuizId));
+            StudentAnswer dup1 = new StudentAnswer(); dup1.setQuestion(q1); dup1.setSelectedOption(o1); dup1.setIsCorrect(false);
+            StudentAnswer dup2 = new StudentAnswer(); dup2.setQuestion(q1); dup2.setSelectedOption(o1);
+            assertThrows("12d. Một câu gửi nhiều lựa chọn bị từ chối", IllegalArgumentException.class,
+                    () -> aDao.submitAttempt(user(4), dupAttempt, List.of(dup1, dup2)));
+
+            StudentAnswer wrongOpt = new StudentAnswer(); wrongOpt.setQuestion(q1); wrongOpt.setSelectedOption(o2);
+            assertThrows("12e. Phương án không thuộc câu hỏi bị từ chối", IllegalArgumentException.class,
+                    () -> aDao.submitAttempt(user(4), dupAttempt, List.of(wrongOpt)));
+
+            StudentAnswer spoofed = new StudentAnswer(); spoofed.setQuestion(q2); spoofed.setSelectedOption(o2); spoofed.setIsCorrect(true);
+            QuizAttempt secondSub = aDao.submitAttempt(user(4), dupAttempt, List.of(dup1, spoofed));
+            List<QuizAttempt> hist = aDao.getHistory(user(4), quiz(pyQuizId));
+            BigDecimal best = aDao.getBestScore(user(4), quiz(pyQuizId));
+            assertTrue("12f. Làm lượt mới không ghi đè lượt cũ & không tin isCorrect giả từ UI",
+                    hist.size() == 2 && new BigDecimal("3.33").compareTo(secondSub.getScore()) == 0
+                            && new BigDecimal("3.33").compareTo(best) == 0);
         }
 
         try (QuizAttemptDAO aDao = new QuizAttemptDAO()) {
@@ -233,6 +264,17 @@ public class M3SelfTest {
             assertThrows("14. cancelUnfinishedAttempts chuyển IN_PROGRESS còn sót -> CANCELLED",
                     IllegalStateException.class,
                     () -> aDao.getAttemptContent(user(5), att6));
+            assertThrows("14b. Lượt đã CANCELLED không xem được kết quả", IllegalStateException.class,
+                    () -> aDao.getResult(user(5), att6));
+        }
+
+        try (QuizDAO qDao = new QuizDAO()) {
+            assertThrows("15. Tài khoản bị khóa bị từ chối khi xem kết quả", SecurityException.class,
+                    () -> {
+                        try (QuizAttemptDAO aDao = new QuizAttemptDAO()) {
+                            aDao.getResult(user(7), new QuizAttempt() {{ setId(1L); }});
+                        }
+                    });
         }
 
         System.out.println("\n=== KET QUA TEST M3: PASS=" + passed + ", FAIL=" + failed + " ===");
