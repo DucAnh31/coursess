@@ -3,6 +3,7 @@ package view.course;
 import dao.LessonDAO;
 import dao.LessonDocumentDAO;
 import java.awt.BorderLayout;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -11,8 +12,11 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -55,6 +59,7 @@ public class LessonAddFrm extends JFrame implements ActionListener {
     private JTextField txtLessonTitle;
     private JSpinner spnOrderIndex;
     private JTextField txtVideoUrl;
+    private JButton btnTestVideo;
     private JButton btnChooseAttachment;
     private JLabel lblAttachmentName;
     private JButton btnAddLesson;
@@ -151,10 +156,15 @@ public class LessonAddFrm extends JFrame implements ActionListener {
 
         gbc.gridx = 1;
         gbc.weightx = 0.55;
+        JPanel videoPanel = new JPanel(new BorderLayout(5, 0));
         txtVideoUrl = new JTextField("https://www.youtube.com/watch?v=demo");
         txtVideoUrl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        txtVideoUrl.setPreferredSize(new Dimension(280, 28));
-        inputPanel.add(txtVideoUrl, gbc);
+        btnTestVideo = new JButton("Xem thử");
+        btnTestVideo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnTestVideo.addActionListener(this);
+        videoPanel.add(txtVideoUrl, BorderLayout.CENTER);
+        videoPanel.add(btnTestVideo, BorderLayout.EAST);
+        inputPanel.add(videoPanel, gbc);
 
         gbc.gridx = 2;
         gbc.weightx = 0.1;
@@ -212,6 +222,18 @@ public class LessonAddFrm extends JFrame implements ActionListener {
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
         tblLessons.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
         tblLessons.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
+
+        tblLessons.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    int row = tblLessons.getSelectedRow();
+                    if (row >= 0 && row < lessons.size()) {
+                        openVideo(lessons.get(row).getVideoUrl());
+                    }
+                }
+            }
+        });
 
         JScrollPane tableScroll = new JScrollPane(tblLessons);
         tableScroll.setBorder(BorderFactory.createTitledBorder("Danh sách bài học hiện có của khóa học"));
@@ -356,10 +378,34 @@ public class LessonAddFrm extends JFrame implements ActionListener {
         }
     }
 
+    private void openVideo(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Đường dẫn video trống!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String cleanUrl = url.trim();
+        if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+            cleanUrl = "https://" + cleanUrl;
+        }
+
+        try {
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(new URI(cleanUrl));
+            } else {
+                Runtime.getRuntime().exec(new String[]{"xdg-open", cleanUrl});
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Không thể mở trình duyệt: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     @Override
     public void actionPerformed(ActionEvent event) {
         if (event.getSource() == btnChooseAttachment) {
             chooseAttachment();
+        } else if (event.getSource() == btnTestVideo) {
+            openVideo(txtVideoUrl.getText().trim());
         } else if (event.getSource() == btnAddLesson) {
             addLesson();
         } else if (event.getSource() == btnReviewCourse) {

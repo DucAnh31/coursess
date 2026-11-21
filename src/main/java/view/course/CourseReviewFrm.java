@@ -3,18 +3,26 @@ package view.course;
 import dao.CourseDAO;
 import dao.LessonDAO;
 import java.awt.BorderLayout;
+import java.awt.Desktop;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Image;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.File;
+import java.net.URI;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -23,6 +31,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import model.Course;
@@ -46,6 +55,7 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
     private JLabel lblStatusValue;
     private JLabel lblLessonCountValue;
     private JLabel lblDescValue;
+    private JLabel lblThumbnailPreview;
 
     private JLabel lblCheckTitleDesc;
     private JLabel lblCheckCategory;
@@ -56,6 +66,7 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
 
     private JButton btnPublish;
     private JButton btnAddLesson;
+    private JButton btnWatchVideo;
     private JButton btnBack;
 
     private List<Lesson> lessons = new ArrayList<>();
@@ -150,6 +161,7 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         infoPanel.add(lblLessonCountValue, gbc);
 
         gbc.gridx = 0; gbc.gridy = 2;
+        gbc.gridwidth = 1;
         JLabel lblD = new JLabel("Mô tả:");
         lblD.setFont(new Font("Segoe UI", Font.BOLD, 13));
         infoPanel.add(lblD, gbc);
@@ -159,6 +171,18 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         lblDescValue = new JLabel("-");
         lblDescValue.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         infoPanel.add(lblDescValue, gbc);
+
+        gbc.gridx = 4;
+        gbc.gridy = 0;
+        gbc.gridwidth = 1;
+        gbc.gridheight = 3;
+        gbc.insets = new Insets(4, 14, 4, 8);
+        gbc.anchor = GridBagConstraints.CENTER;
+        lblThumbnailPreview = new JLabel("Chưa có ảnh bìa", SwingConstants.CENTER);
+        lblThumbnailPreview.setPreferredSize(new Dimension(130, 80));
+        lblThumbnailPreview.setBorder(BorderFactory.createEtchedBorder());
+        lblThumbnailPreview.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        infoPanel.add(lblThumbnailPreview, gbc);
 
         JPanel checklistPanel = new JPanel(new GridLayout(3, 1, 4, 4));
         checklistPanel.setBorder(BorderFactory.createTitledBorder("Kiểm tra điều kiện xuất bản"));
@@ -204,6 +228,15 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         tblLessons.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
         tblLessons.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
 
+        tblLessons.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    openSelectedLessonVideo();
+                }
+            }
+        });
+
         JScrollPane tableScroll = new JScrollPane(tblLessons);
         tableScroll.setBorder(BorderFactory.createTitledBorder("Danh sách các bài học sẽ được xuất bản"));
 
@@ -217,6 +250,11 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         btnAddLesson.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btnAddLesson.addActionListener(this);
         leftActions.add(btnAddLesson);
+
+        btnWatchVideo = new JButton("Mở video bài học");
+        btnWatchVideo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnWatchVideo.addActionListener(this);
+        leftActions.add(btnWatchVideo);
 
         JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
         btnBack = new JButton("Quay lại danh sách");
@@ -278,6 +316,28 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
             }
 
             lblLessonCountValue.setText(lessons.size() + " bài học");
+
+            String thumbUrl = course.getThumbnailUrl();
+            if (thumbUrl != null && !thumbUrl.trim().isEmpty()) {
+                File imgFile = new File(thumbUrl.trim());
+                if (imgFile.exists()) {
+                    try {
+                        ImageIcon icon = new ImageIcon(imgFile.getAbsolutePath());
+                        Image img = icon.getImage().getScaledInstance(130, 80, Image.SCALE_SMOOTH);
+                        lblThumbnailPreview.setIcon(new ImageIcon(img));
+                        lblThumbnailPreview.setText("");
+                    } catch (Exception e) {
+                        lblThumbnailPreview.setIcon(null);
+                        lblThumbnailPreview.setText("Lỗi xem ảnh");
+                    }
+                } else {
+                    lblThumbnailPreview.setIcon(null);
+                    lblThumbnailPreview.setText("Không tìm thấy ảnh");
+                }
+            } else {
+                lblThumbnailPreview.setIcon(null);
+                lblThumbnailPreview.setText("Chưa có ảnh bìa");
+            }
 
             if (lessons.isEmpty()) {
                 lblCheckLessons.setText("• Số lượng bài học: Cần có ít nhất 1 bài học (Hiện có: 0 bài - Chưa đạt)");
@@ -363,10 +423,41 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         }
     }
 
+    private void openSelectedLessonVideo() {
+        int selectedRow = tblLessons.getSelectedRow();
+        if (selectedRow < 0 || selectedRow >= lessons.size()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn một bài học trong bảng để mở video!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        Lesson selectedLesson = lessons.get(selectedRow);
+        String url = selectedLesson.getVideoUrl();
+        if (url == null || url.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Bài học \"" + selectedLesson.getTitle() + "\" chưa có đường dẫn video!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String cleanUrl = url.trim();
+        if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+            cleanUrl = "https://" + cleanUrl;
+        }
+
+        try {
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(new URI(cleanUrl));
+            } else {
+                Runtime.getRuntime().exec(new String[]{"xdg-open", cleanUrl});
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Không thể mở trình duyệt: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     @Override
     public void actionPerformed(ActionEvent event) {
         if (event.getSource() == btnPublish) {
             publishCourse();
+        } else if (event.getSource() == btnWatchVideo) {
+            openSelectedLessonVideo();
         } else if (event.getSource() == btnAddLesson) {
             new LessonAddFrm(teacher, course).setVisible(true);
             dispose();

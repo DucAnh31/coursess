@@ -13,6 +13,9 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
 import java.util.List;
 import javax.swing.BorderFactory;
@@ -53,7 +56,7 @@ public class CourseCreateFrm extends JFrame implements ActionListener {
     private JButton btnSave;
     private JButton btnCancel;
 
-    private String selectedThumbnailPath = null;
+    private File selectedThumbnailFile = null;
 
     public CourseCreateFrm(User teacher) {
         super("Tạo khóa học mới - COURSESS");
@@ -215,11 +218,11 @@ public class CourseCreateFrm extends JFrame implements ActionListener {
         int result = fileChooser.showOpenDialog(this);
         if (result == JFileChooser.APPROVE_OPTION) {
             File file = fileChooser.getSelectedFile();
-            selectedThumbnailPath = file.getAbsolutePath();
+            selectedThumbnailFile = file;
             lblThumbnailPath.setText(file.getName());
 
             try {
-                ImageIcon originalIcon = new ImageIcon(selectedThumbnailPath);
+                ImageIcon originalIcon = new ImageIcon(file.getAbsolutePath());
                 Image img = originalIcon.getImage().getScaledInstance(140, 85, Image.SCALE_SMOOTH);
                 lblThumbnailPreview.setIcon(new ImageIcon(img));
                 lblThumbnailPreview.setText("");
@@ -227,6 +230,22 @@ public class CourseCreateFrm extends JFrame implements ActionListener {
                 lblThumbnailPreview.setIcon(null);
                 lblThumbnailPreview.setText("Lỗi xem trước");
             }
+        }
+    }
+
+    private String copyThumbnailToUploads(File sourceFile) {
+        try {
+            File uploadDir = new File("uploads/thumbnails");
+            if (!uploadDir.exists()) {
+                uploadDir.mkdirs();
+            }
+            String storedFileName = "thumb_" + System.currentTimeMillis() + "_" + sourceFile.getName();
+            File destFile = new File(uploadDir, storedFileName);
+            Files.copy(sourceFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return destFile.getPath();
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Không thể lưu tệp ảnh bìa vào uploads: " + e.getMessage(), "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+            return null;
         }
     }
 
@@ -253,11 +272,16 @@ public class CourseCreateFrm extends JFrame implements ActionListener {
             return;
         }
 
+        String storedThumbnailPath = null;
+        if (selectedThumbnailFile != null) {
+            storedThumbnailPath = copyThumbnailToUploads(selectedThumbnailFile);
+        }
+
         Course course = new Course();
         course.setTitle(title);
         course.setCategory(selectedCategory);
         course.setDescription(description);
-        course.setThumbnailUrl(selectedThumbnailPath);
+        course.setThumbnailUrl(storedThumbnailPath);
         course.setStatus(CourseStatus.DRAFT);
         course.setTeacher(teacher);
 
