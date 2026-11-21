@@ -1,8 +1,37 @@
+# Build output & compiled classes
 /target/
-/.env
-/.idea/
-/.classpath
-/.project
-/.settings/
+bin/
+out/
+*.class
+
+# Environment & local configurations
+.env
+.env.*
+!.env.example
+*.local.properties
+db.properties
+local.properties
+
+# IDE & Editor settings
+.idea/
+.vscode/
 *.iml
+.classpath
+.project
+.settings/
+
+# Temporary documents & assets
+*.docx
+*.pdf
+*.png
+*.vpp
+
+# Logs
 *.log
+
+# Project specific / temporary transfer folders
+/cnpm_m4_transfer/
+
+# OS generated files
+.DS_Store
+Thumbs.db
