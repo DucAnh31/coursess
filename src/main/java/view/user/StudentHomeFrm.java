@@ -1,6 +1,7 @@
 package view.user;
 
 import java.awt.BorderLayout;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.SQLException;
@@ -70,6 +71,11 @@ public class StudentHomeFrm extends JPanel implements ActionListener {
             int choice = JOptionPane.showConfirmDialog(this, "Bạn muốn đăng xuất?", "Đăng xuất",
                     JOptionPane.YES_NO_OPTION);
             if (choice == JOptionPane.YES_OPTION) {
+                for (Window w : Window.getWindows()) {
+                    if (w != null && w.getClass().getPackageName().equals("view.quiz")) {
+                        w.dispose();
+                    }
+                }
                 student.setPasswordHash(null);
                 MainFrm.showScreen(this, new LoginFrm(), "Đăng nhập");
             }

@@ -128,6 +128,7 @@ public class QuizResultFrm extends JFrame implements ActionListener {
                 try {
                     attempt = get();
                     displayResult(attempt);
+                    setButtonsEnabled(true);
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException ex) {
@@ -222,6 +223,9 @@ public class QuizResultFrm extends JFrame implements ActionListener {
 
             @Override
             protected void done() {
+                if (!isDisplayable()) {
+                    return;
+                }
                 setButtonsEnabled(true);
                 try {
                     QuizAttempt newAttempt = get();
@@ -239,7 +243,9 @@ public class QuizResultFrm extends JFrame implements ActionListener {
     }
 
     private void setButtonsEnabled(boolean enabled) {
-        btnRetryQuiz.setEnabled(enabled);
+        boolean canRetry = enabled && (attempt == null || attempt.getQuiz() == null
+                || attempt.getQuiz().getStatus() != model.enums.QuizStatus.CLOSED);
+        btnRetryQuiz.setEnabled(canRetry);
         btnOpenHistory.setEnabled(enabled);
     }
 

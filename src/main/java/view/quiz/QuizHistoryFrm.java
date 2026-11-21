@@ -42,6 +42,7 @@ public class QuizHistoryFrm extends JFrame implements ActionListener {
     private final Quiz initialQuiz;
 
     private List<QuizAttempt> attempts = new ArrayList<>();
+    private long historyLoadSeq = 0;
     private JComboBox<Quiz> cboQuiz;
     private JLabel lblBestScore;
     private JLabel lblNotice;
@@ -196,6 +197,7 @@ public class QuizHistoryFrm extends JFrame implements ActionListener {
     }
 
     private void loadHistory(Quiz quiz) {
+        final long seq = ++historyLoadSeq;
         btnOpenResult.setEnabled(false);
         lblNotice.setForeground(UIManager.getColor("Label.foreground"));
         lblNotice.setText("Đang tải các lượt đã nộp...");
@@ -212,6 +214,9 @@ public class QuizHistoryFrm extends JFrame implements ActionListener {
 
             @Override
             protected void done() {
+                if (seq != historyLoadSeq || !isDisplayable()) {
+                    return;
+                }
                 try {
                     HistoryData data = get();
                     attempts = data.attempts;
@@ -235,6 +240,9 @@ public class QuizHistoryFrm extends JFrame implements ActionListener {
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException ex) {
+                    attempts = new ArrayList<>();
+                    tableModel.setRowCount(0);
+                    lblBestScore.setText("Điểm cao nhất: —");
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
                     lblNotice.setForeground(Color.RED);
                     lblNotice.setText(cause.getMessage());

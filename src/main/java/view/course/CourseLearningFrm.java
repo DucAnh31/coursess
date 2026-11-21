@@ -73,6 +73,7 @@ public class CourseLearningFrm extends JPanel implements ActionListener {
     private final JButton subBack = new JButton("Quay lại");
     private List<Lesson> lessons = new ArrayList<>();
     private final List<LessonDocument> documents = new ArrayList<>();
+    private QuizListFrm quizListFrm;
 
     public CourseLearningFrm(User student, Course course) throws SQLException {
         this(student, course, null);
@@ -363,10 +364,21 @@ public class CourseLearningFrm extends JPanel implements ActionListener {
         } else if (event.getSource() == subQuiz) {
             try {
                 Lesson lesson = checkLesson();
-                new QuizListFrm(student, lesson).setVisible(true);
+                if (quizListFrm != null && quizListFrm.isDisplayable()) {
+                    quizListFrm.toFront();
+                    quizListFrm.requestFocus();
+                } else {
+                    quizListFrm = new QuizListFrm(student, lesson);
+                    quizListFrm.setVisible(true);
+                }
             } catch (SQLException e) {
+                clearLesson();
                 outNotice.setText(e.getMessage());
                 JOptionPane.showMessageDialog(this, e.getMessage(), "Không thể mở danh sách quiz", JOptionPane.ERROR_MESSAGE);
+                try {
+                    loadLessons();
+                } catch (SQLException ignored) {
+                }
             }
         } else if (event.getSource() == subDownload) {
             int selected = outDocuments.getSelectedRow();

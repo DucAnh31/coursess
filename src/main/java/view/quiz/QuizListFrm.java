@@ -33,6 +33,7 @@ public class QuizListFrm extends JFrame implements ActionListener {
     private final Lesson lesson;
 
     private List<Quiz> quizzes = new ArrayList<>();
+    private QuizAttemptFrm openAttemptFrm;
     private JLabel lblLessonTitle;
     private JLabel lblNotice;
     private JTable tblQuizzes;
@@ -119,6 +120,9 @@ public class QuizListFrm extends JFrame implements ActionListener {
 
             @Override
             protected void done() {
+                if (!isDisplayable()) {
+                    return;
+                }
                 setControlsEnabled(true);
                 try {
                     quizzes = get();
@@ -129,6 +133,7 @@ public class QuizListFrm extends JFrame implements ActionListener {
                         tableModel.addRow(new Object[]{i + 1, q.getTitle(), count, "Đang nhận lượt"});
                     }
                     if (quizzes.isEmpty()) {
+                        btnStartQuiz.setEnabled(false);
                         lblNotice.setText("Hiện chưa có quiz nào đang nhận lượt làm mới trong bài học này.");
                     } else {
                         lblNotice.setText("Tìm thấy " + quizzes.size() + " quiz khả dụng. Chọn một quiz và nhấn Bắt đầu.");
@@ -168,11 +173,21 @@ public class QuizListFrm extends JFrame implements ActionListener {
 
             @Override
             protected void done() {
+                if (!isDisplayable()) {
+                    return;
+                }
                 setControlsEnabled(true);
+                btnStartQuiz.setEnabled(!quizzes.isEmpty());
                 try {
                     QuizAttempt attempt = get();
                     lblNotice.setText("Đã sẵn sàng lượt làm bài #" + attempt.getId());
-                    new QuizAttemptFrm(student, attempt).setVisible(true);
+                    if (openAttemptFrm != null && openAttemptFrm.isDisplayable()) {
+                        openAttemptFrm.toFront();
+                        openAttemptFrm.requestFocus();
+                    } else {
+                        openAttemptFrm = new QuizAttemptFrm(student, attempt);
+                        openAttemptFrm.setVisible(true);
+                    }
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                 } catch (ExecutionException ex) {

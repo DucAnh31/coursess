@@ -297,8 +297,18 @@ public class QuizAttemptFrm extends JFrame implements ActionListener {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
                     lblNotice.setForeground(Color.RED);
                     lblNotice.setText("Hủy lượt thất bại: " + cause.getMessage());
-                    JOptionPane.showMessageDialog(QuizAttemptFrm.this, cause.getMessage(),
-                            "Không thể hủy lượt làm", JOptionPane.ERROR_MESSAGE);
+                    if (cause instanceof IllegalStateException || cause instanceof SecurityException) {
+                        JOptionPane.showMessageDialog(QuizAttemptFrm.this, cause.getMessage(),
+                                "Thông báo", JOptionPane.WARNING_MESSAGE);
+                        dispose();
+                    } else {
+                        int force = JOptionPane.showConfirmDialog(QuizAttemptFrm.this,
+                                "Hủy lượt thất bại: " + cause.getMessage() + "\nBạn vẫn muốn đóng cửa sổ này?",
+                                "Không thể hủy lượt làm", JOptionPane.YES_NO_OPTION, JOptionPane.ERROR_MESSAGE);
+                        if (force == JOptionPane.YES_OPTION) {
+                            dispose();
+                        }
+                    }
                 }
             }
         }.execute();

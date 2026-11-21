@@ -69,6 +69,13 @@ public class M3SelfTest {
     }
 
     public static void main(String[] args) throws Exception {
+        try (QuizAttemptDAO cleanupDao = new QuizAttemptDAO()) {
+            Connection c = cleanupDao.getConnection();
+            try (PreparedStatement ps = c.prepareStatement(
+                    "UPDATE quizzes SET status = 'CLOSED' WHERE lesson_id = 1 AND id <> 1 AND title = 'Quiz bài 1 - Biến và kiểu dữ liệu'")) {
+                ps.executeUpdate();
+            }
+        }
         try (QuizDAO qDao = new QuizDAO()) {
             assertThrows("1. Tài khoản bị khóa không xem được danh sách quiz", SecurityException.class,
                     () -> qDao.getAvailableQuizzesOfLesson(user(7), lesson(1)));
@@ -248,6 +255,10 @@ public class M3SelfTest {
             assertTrue("12f. Làm lượt mới không ghi đè lượt cũ & không tin isCorrect giả từ UI",
                     hist.size() == 2 && new BigDecimal("3.33").compareTo(secondSub.getScore()) == 0
                             && new BigDecimal("3.33").compareTo(best) == 0);
+            try (PreparedStatement ps = aDao.getConnection().prepareStatement("UPDATE quizzes SET status = 'CLOSED' WHERE id = ?")) {
+                ps.setLong(1, pyQuizId);
+                ps.executeUpdate();
+            }
         }
 
         try (QuizAttemptDAO aDao = new QuizAttemptDAO()) {
@@ -275,6 +286,25 @@ public class M3SelfTest {
                             aDao.getResult(user(7), new QuizAttempt() {{ setId(1L); }});
                         }
                     });
+        }
+
+        try (QuizDAO qDao = new QuizDAO()) {
+            Connection c = qDao.getConnection();
+            try (PreparedStatement ps = c.prepareStatement("UPDATE courses SET status = 'DRAFT' WHERE id = 1")) {
+                ps.executeUpdate();
+            }
+            try {
+                assertThrows("16. Khóa học DRAFT không cho xem danh sách quiz", IllegalStateException.class,
+                        () -> qDao.getAvailableQuizzesOfLesson(user(4), lesson(1)));
+                try (QuizAttemptDAO aDao = new QuizAttemptDAO()) {
+                    assertThrows("16b. Khóa học DRAFT không cho bắt đầu lượt làm mới", IllegalStateException.class,
+                            () -> aDao.startAttempt(user(4), quiz(1)));
+                }
+            } finally {
+                try (PreparedStatement ps = c.prepareStatement("UPDATE courses SET status = 'OPEN' WHERE id = 1")) {
+                    ps.executeUpdate();
+                }
+            }
         }
 
         System.out.println("\n=== KET QUA TEST M3: PASS=" + passed + ", FAIL=" + failed + " ===");

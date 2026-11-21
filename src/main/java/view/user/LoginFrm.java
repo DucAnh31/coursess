@@ -1,5 +1,6 @@
 package view.user;
 
+import dao.QuizAttemptDAO;
 import dao.UserDAO;
 import java.awt.BorderLayout;
 import java.awt.GridBagLayout;
@@ -17,6 +18,7 @@ import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import model.User;
+import model.enums.UserRole;
 import view.MainFrm;
 
 public class LoginFrm extends JPanel implements ActionListener {
@@ -73,6 +75,11 @@ public class LoginFrm extends JPanel implements ActionListener {
             if (user == null) {
                 JOptionPane.showMessageDialog(this, "Thông tin đăng nhập không đúng hoặc tài khoản đã bị khóa.");
                 return;
+            }
+            if (user.getRole() == UserRole.STUDENT) {
+                try (QuizAttemptDAO qaDao = new QuizAttemptDAO()) {
+                    qaDao.cancelUnfinishedAttempts(user);
+                }
             }
             MainFrm.showHome(this, user);
         } catch (SQLException e) {
