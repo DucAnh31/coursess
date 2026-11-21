@@ -63,7 +63,7 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
     public TeacherCourseListFrm(User teacher) {
         super("Quản lý khóa học - COURSESS");
         this.teacher = teacher != null ? teacher : createDefaultTeacher();
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setSize(960, 600);
         setLocationRelativeTo(null);
 

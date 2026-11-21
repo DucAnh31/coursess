@@ -14,19 +14,19 @@ public class CategoryDAO extends DAO {
     }
 
     public List<Category> getAllCategories() throws SQLException {
-        List<Category> list = new ArrayList<>();
-        String sql = "SELECT id, name, description FROM categories ORDER BY name ASC";
+        List<Category> categories = new ArrayList<>();
+        String sql = "SELECT id, name, description FROM categories ORDER BY name, id";
         try (PreparedStatement ps = con.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+                ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                Category c = new Category();
-                c.setId(rs.getLong("id"));
-                c.setName(rs.getString("name"));
-                c.setDescription(rs.getString("description"));
-                list.add(c);
+                Category category = new Category();
+                category.setId(rs.getLong("id"));
+                category.setName(rs.getString("name"));
+                category.setDescription(rs.getString("description"));
+                categories.add(category);
             }
         }
-        return list;
+        return categories;
     }
 
     public List<Category> findAll() throws SQLException {

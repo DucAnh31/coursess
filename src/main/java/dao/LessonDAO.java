@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import model.Course;
 import model.Lesson;
 import model.LessonDocument;
 
@@ -16,11 +17,13 @@ public class LessonDAO extends DAO {
 
     public List<Lesson> getLessonsOfCourse(Long courseId) throws SQLException {
         List<Lesson> lessons = new ArrayList<>();
-        String sql = "SELECT id, title, video_url, order_index, is_visible, course_id " +
-                     "FROM lessons WHERE course_id = ? ORDER BY order_index ASC";
+        String sql = "SELECT id, title, video_url, order_index, is_visible, course_id "
+                + "FROM lessons WHERE course_id = ? ORDER BY order_index ASC";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setLong(1, courseId);
             try (ResultSet rs = ps.executeQuery()) {
+                Course course = new Course();
+                course.setId(courseId);
                 while (rs.next()) {
                     Lesson lesson = new Lesson();
                     lesson.setId(rs.getLong("id"));
@@ -28,6 +31,7 @@ public class LessonDAO extends DAO {
                     lesson.setVideoUrl(rs.getString("video_url"));
                     lesson.setOrderIndex(rs.getInt("order_index"));
                     lesson.setIsVisible(rs.getBoolean("is_visible"));
+                    lesson.setCourse(course);
                     lessons.add(lesson);
                 }
             }
@@ -41,12 +45,34 @@ public class LessonDAO extends DAO {
     }
 
     public List<Lesson> getLessonsByCourse(Long courseId) throws SQLException {
-        return getLessonsOfCourse(courseId);
+        List<Lesson> lessons = new ArrayList<>();
+        String sql = "SELECT * FROM lessons WHERE course_id = ? AND is_visible = 1 ORDER BY order_index, id";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setObject(1, courseId);
+            try (ResultSet rs = ps.executeQuery()) {
+                Course course = new Course();
+                course.setId(courseId);
+                while (rs.next()) {
+                    Lesson lesson = new Lesson();
+                    lesson.setId(rs.getLong("id"));
+                    lesson.setTitle(rs.getString("title"));
+                    lesson.setVideoUrl(rs.getString("video_url"));
+                    lesson.setOrderIndex(rs.getInt("order_index"));
+                    lesson.setIsVisible(rs.getBoolean("is_visible"));
+                    lesson.setCourse(course);
+                    lessons.add(lesson);
+                }
+            }
+        }
+        for (Lesson lesson : lessons) {
+            lesson.setDocuments(getDocumentsOfLesson(lesson.getId()));
+        }
+        return lessons;
     }
 
     public boolean addLesson(Lesson lesson, Long courseId) throws SQLException {
-        String sql = "INSERT INTO lessons (title, video_url, order_index, is_visible, course_id) " +
-                     "VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO lessons (title, video_url, order_index, is_visible, course_id) "
+                + "VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, lesson.getTitle());
             ps.setString(2, lesson.getVideoUrl() != null ? lesson.getVideoUrl() : "");
@@ -111,7 +137,7 @@ public class LessonDAO extends DAO {
         return null;
     }
 
-    private List<LessonDocument> getDocumentsOfLesson(Long lessonId) throws SQLException {
+    public List<LessonDocument> getDocumentsOfLesson(Long lessonId) throws SQLException {
         List<LessonDocument> docs = new ArrayList<>();
         String sql = "SELECT id, name, file_path, file_size, is_available FROM lesson_documents WHERE lesson_id = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
@@ -129,5 +155,26 @@ public class LessonDAO extends DAO {
             }
         }
         return docs;
+    }
+
+    public boolean addDocument(LessonDocument doc, Long lessonId) throws SQLException {
+        String sql = "INSERT INTO lesson_documents (name, file_path, file_size, is_available, lesson_id) VALUES (?, ?, ?, ?, ?)";
+        try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, doc.getName());
+            ps.setString(2, doc.getFilePath());
+            ps.setLong(3, doc.getFileSize() != null ? doc.getFileSize() : 0L);
+            ps.setBoolean(4, doc.getIsAvailable() != null ? doc.getIsAvailable() : true);
+            ps.setLong(5, lessonId);
+            int affected = ps.executeUpdate();
+            if (affected > 0) {
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        doc.setId(rs.getLong(1));
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
     }
 }
