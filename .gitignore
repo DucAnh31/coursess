@@ -6,3 +6,7 @@
 /.settings/
 *.iml
 *.log
+/storage/thumbnails/*
+!/storage/thumbnails/.gitkeep
+/storage/documents/*
+!/storage/documents/.gitkeep

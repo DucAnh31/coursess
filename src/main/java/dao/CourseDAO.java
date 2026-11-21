@@ -10,6 +10,7 @@ import model.Category;
 import model.Course;
 import model.User;
 import model.enums.CourseStatus;
+import model.enums.UserRole;
 
 public class CourseDAO extends DAO {
     public CourseDAO() throws SQLException {
@@ -185,5 +186,38 @@ public class CourseDAO extends DAO {
         c.setTeacher(teacher);
 
         return c;
+    }
+
+    public Course readCourse(ResultSet rs) throws SQLException {
+        User teacher = new User();
+        teacher.setId(rs.getLong("teacher_id"));
+        teacher.setFullName(rs.getString("teacher_name"));
+        teacher.setUsername(rs.getString("teacher_username"));
+        try {
+            teacher.setRole(UserRole.valueOf(rs.getString("teacher_role")));
+        } catch (Exception ignored) {
+        }
+        try {
+            teacher.setIsActive(rs.getBoolean("teacher_active"));
+        } catch (Exception ignored) {
+        }
+
+        Category category = new Category();
+        category.setId(rs.getLong("category_id"));
+        category.setName(rs.getString("category_name"));
+        try {
+            category.setDescription(rs.getString("category_description"));
+        } catch (Exception ignored) {
+        }
+
+        Course course = new Course();
+        course.setId(rs.getLong("id"));
+        course.setTitle(rs.getString("title"));
+        course.setDescription(rs.getString("description"));
+        course.setThumbnailUrl(rs.getString("thumbnail_url"));
+        course.setStatus(CourseStatus.valueOf(rs.getString("status")));
+        course.setTeacher(teacher);
+        course.setCategory(category);
+        return course;
     }
 }
