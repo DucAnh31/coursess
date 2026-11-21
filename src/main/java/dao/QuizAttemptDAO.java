@@ -46,8 +46,8 @@ public class QuizAttemptDAO extends DAO {
                     throw new SecurityException("Tài khoản của bạn đã bị khóa.");
                 }
                 UserRole role = UserRole.valueOf(rs.getString("role"));
-                if (role != UserRole.STUDENT && role != UserRole.TEACHER) {
-                    throw new SecurityException("Vai trò tài khoản không được phép thực hiện chức năng làm quiz.");
+                if (role != UserRole.STUDENT) {
+                    throw new SecurityException("Chỉ tài khoản học sinh mới được tham gia khóa học và làm quiz.");
                 }
                 User u = new User();
                 u.setId(rs.getLong("id"));

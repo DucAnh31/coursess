@@ -77,6 +77,9 @@ public class M3SelfTest {
         try (QuizDAO qDao = new QuizDAO()) {
             assertThrows("2. Giảng viên không được làm quiz trong khóa mình dạy", SecurityException.class,
                     () -> qDao.getAvailableQuizzesOfLesson(user(2), lesson(1)));
+            assertThrows("2b. Giảng viên không được tham gia/làm quiz trong khóa học của giảng viên khác",
+                    SecurityException.class,
+                    () -> qDao.getAvailableQuizzesOfLesson(user(3), lesson(1)));
         }
 
         try (QuizDAO qDao = new QuizDAO()) {
