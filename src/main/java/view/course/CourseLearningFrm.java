@@ -1,31 +1,47 @@
 package view.course;
 
+import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import javax.swing.JFrame;
+import javax.swing.JButton;
+import javax.swing.JPanel;
 import model.Course;
 import model.User;
+import view.MainFrm;
 
-public class CourseLearningFrm extends JFrame implements ActionListener {
+public class CourseLearningFrm extends JPanel implements ActionListener {
     private final User student;
     private final Course course;
+    private final JPanel parentFrame;
+    private final JButton subBack = new JButton("Quay lại");
 
     public CourseLearningFrm(User student, Course course) {
-        super("Học theo khóa học");
+        this(student, course, null);
+    }
+
+    public CourseLearningFrm(User student, Course course, JPanel parentFrame) {
         this.student = student;
         this.course = course;
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(900, 600);
-        setLocationRelativeTo(null);
+        this.parentFrame = parentFrame;
+        setLayout(new BorderLayout());
         initComponents();
     }
 
     private void initComponents() {
-        // TODO: Tạo thành phần Swing, bố trí giao diện và đăng ký listener.
+        JPanel buttons = new JPanel();
+        buttons.add(subBack);
+        subBack.addActionListener(this);
+        add(buttons, BorderLayout.SOUTH);
     }
 
     @Override
     public void actionPerformed(ActionEvent event) {
-        // TODO: Xử lý sự kiện của các nút trên form.
+        if (event.getSource() == subBack) {
+            if (parentFrame == null) {
+                MainFrm.showHome(this, student);
+            } else {
+                MainFrm.showScreen(this, parentFrame, "Chi tiết khóa học");
+            }
+        }
     }
 }
