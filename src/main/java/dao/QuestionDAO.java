@@ -19,11 +19,6 @@ public class QuestionDAO extends DAO {
         return getQuestionsOfQuiz(this.con, quiz, true);
     }
 
-    /**
-     * Lấy danh sách câu hỏi theo thứ tự order_index ASC.
-     * Khi includeCorrectFlag = false (làm bài), không nạp cột is_correct (giữ null).
-     * Khi includeCorrectFlag = true (chấm bài / xem kết quả SUBMITTED), nạp đủ is_correct.
-     */
     public static List<Question> getQuestionsOfQuiz(Connection con, Quiz quiz, boolean includeCorrectFlag) throws SQLException {
         if (quiz == null || quiz.getId() == null) {
             throw new IllegalArgumentException("Quiz không hợp lệ.");

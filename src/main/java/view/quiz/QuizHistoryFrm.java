@@ -225,7 +225,6 @@ public class QuizHistoryFrm extends JFrame implements ActionListener {
                         tableModel.addRow(new Object[]{"#" + qa.getId(), time, ratio, score});
                     }
                     if (data.bestScore == null || attempts.isEmpty()) {
-                        // Quy tắc bắt buộc: chưa nộp bài KHÔNG được hiển thị như điểm 0
                         lblBestScore.setText("Điểm cao nhất: Chưa nộp bài");
                         lblNotice.setText("Chưa có lượt nộp nào cho quiz này.");
                         btnOpenResult.setEnabled(false);

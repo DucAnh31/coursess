@@ -25,10 +25,7 @@ public class StudentAnswerDAO extends DAO {
         insertAll(this.con, answers);
     }
 
-    /**
-     * Chèn toàn bộ câu trả lời trên cùng Connection con của giao dịch nộp bài.
-     * DAO con KHÔNG tự commit hoặc rollback riêng.
-     */
+    // Runs inside caller's transaction; does not commit or rollback.
     public static void insertAll(Connection con, List<StudentAnswer> answers) throws SQLException {
         if (answers == null || answers.isEmpty()) {
             return;
@@ -50,9 +47,6 @@ public class StudentAnswerDAO extends DAO {
         }
     }
 
-    /**
-     * Lấy danh sách câu trả lời đã lưu của lượt làm (theo thứ tự câu hỏi).
-     */
     public static List<StudentAnswer> getAnswersOfAttempt(Connection con, QuizAttempt attempt) throws SQLException {
         if (attempt == null || attempt.getId() == null) {
             throw new IllegalArgumentException("Lượt làm bài không hợp lệ.");

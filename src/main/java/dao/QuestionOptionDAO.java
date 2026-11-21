@@ -18,10 +18,7 @@ public class QuestionOptionDAO extends DAO {
         return getOptionsWithAnswer(this.con, question);
     }
 
-    /**
-     * Tải phương án cho luồng làm bài: KHÔNG truy vấn cột is_correct.
-     * Thuộc tính Boolean isCorrect được đặt rõ là null ("chưa tải", không phải "đáp án sai").
-     */
+    // Omit is_correct while an attempt is in progress (null = unloaded).
     public static List<QuestionOption> getOptionsForAttempt(Connection con, Question question) throws SQLException {
         if (question == null || question.getId() == null) {
             throw new IllegalArgumentException("Câu hỏi không hợp lệ.");
@@ -35,7 +32,7 @@ public class QuestionOptionDAO extends DAO {
                     QuestionOption opt = new QuestionOption();
                     opt.setId(rs.getLong("id"));
                     opt.setContent(rs.getString("content"));
-                    opt.setIsCorrect(null); // Chưa tải đáp án đúng trước khi nộp
+                    opt.setIsCorrect(null);
                     opt.setOrderIndex(rs.getInt("order_index"));
                     opt.setQuestion(question);
                     options.add(opt);
@@ -45,9 +42,6 @@ public class QuestionOptionDAO extends DAO {
         return options;
     }
 
-    /**
-     * Tải đầy đủ phương án kèm cờ is_correct; chỉ dùng nội bộ khi chấm bài hoặc xem kết quả SUBMITTED.
-     */
     public static List<QuestionOption> getOptionsWithAnswer(Connection con, Question question) throws SQLException {
         if (question == null || question.getId() == null) {
             throw new IllegalArgumentException("Câu hỏi không hợp lệ.");

@@ -30,9 +30,6 @@ public class QuizAttemptDAO extends DAO {
         super();
     }
 
-    /**
-     * Kiểm tra trực tiếp CSDL: tài khoản tồn tại, đang hoạt động và có vai trò được học (STUDENT hoặc TEACHER).
-     */
     static User requireActiveLearner(Connection con, Long userId) throws SQLException {
         if (userId == null) {
             throw new SecurityException("Phiên đăng nhập không hợp lệ.");
@@ -74,10 +71,6 @@ public class QuizAttemptDAO extends DAO {
         }
     }
 
-    /**
-     * Bắt đầu lượt làm mới hoặc trả lại lượt IN_PROGRESS hiện có của (learner, quiz).
-     * Khóa bản ghi quiz trong cùng giao dịch để bảo đảm tối đa một IN_PROGRESS và đề bất biến.
-     */
     public QuizAttempt startAttempt(User learner, Quiz quiz) throws SQLException {
         if (learner == null || learner.getId() == null) {
             throw new SecurityException("Phiên đăng nhập không hợp lệ.");
@@ -105,7 +98,6 @@ public class QuizAttemptDAO extends DAO {
                 throw new IllegalStateException("Quiz không còn khả dụng để bắt đầu lượt mới.");
             }
 
-            // Kiểm tra lượt IN_PROGRESS hiện có (tối đa 1 lượt IN_PROGRESS / người / quiz)
             String findSql = "SELECT id, status, total_questions, started_at FROM quiz_attempts "
                     + "WHERE student_id = ? AND quiz_id = ? AND status = 'IN_PROGRESS' ORDER BY id DESC LIMIT 1";
             try (PreparedStatement ps = this.con.prepareStatement(findSql)) {
@@ -126,7 +118,6 @@ public class QuizAttemptDAO extends DAO {
                 }
             }
 
-            // Kiểm tra đề có ít nhất 1 câu hỏi hợp lệ
             int totalQuestions;
             try (PreparedStatement ps = this.con.prepareStatement("SELECT COUNT(*) FROM questions WHERE quiz_id = ?")) {
                 ps.setLong(1, lockedQuiz.getId());
@@ -178,11 +169,6 @@ public class QuizAttemptDAO extends DAO {
         }
     }
 
-    /**
-     * Lấy nội dung đề cho lượt IN_PROGRESS hợp lệ của chính người học.
-     * KHÔNG nạp cờ isCorrect (đặt null) để không lộ đáp án đúng trước khi nộp.
-     * Không chặn nếu quiz đã chuyển CLOSED sau khi lượt đã bắt đầu hợp lệ.
-     */
     public QuizAttempt getAttemptContent(User learner, QuizAttempt attempt) throws SQLException {
         if (learner == null || learner.getId() == null) {
             throw new SecurityException("Phiên đăng nhập không hợp lệ.");
@@ -221,18 +207,13 @@ public class QuizAttemptDAO extends DAO {
                 quiz.setStatus(QuizStatus.valueOf(rs.getString("quiz_status")));
             }
         }
-        // includeCorrectFlag = false -> isCorrect = null (chưa tải)
+        // Keep isCorrect unloaded (null) until submission.
         List<Question> questions = QuestionDAO.getQuestionsOfQuiz(this.con, quiz, false);
         quiz.setQuestions(questions);
         loaded.setQuiz(quiz);
         return loaded;
     }
 
-    /**
-     * Nộp bài nguyên tử trong 1 transaction: khóa lượt FOR UPDATE, kiểm tra quyền/lựa chọn,
-     * tự lấy đáp án đúng từ DB để chấm thang 10 (HALF_UP 2 chữ số), lưu StudentAnswer và cập nhật SUBMITTED.
-     * Nộp lặp lượt đã SUBMITTED trả lại kết quả đã lưu mà không chấm lại/ghi đè.
-     */
     public QuizAttempt submitAttempt(User learner, QuizAttempt attempt, List<StudentAnswer> answers) throws SQLException {
         if (learner == null || learner.getId() == null) {
             throw new SecurityException("Phiên đăng nhập không hợp lệ.");
@@ -295,7 +276,6 @@ public class QuizAttemptDAO extends DAO {
                     optionMapByQuestion.put(q.getId(), optMap);
                 }
 
-                // Kiểm tra lựa chọn đầu vào: không trùng câu, câu thuộc quiz, phương án thuộc đúng câu
                 Map<Long, Long> selectedOptionIdByQuestion = new HashMap<>();
                 Set<Long> seenQuestions = new HashSet<>();
                 if (answers != null) {
@@ -320,7 +300,6 @@ public class QuizAttemptDAO extends DAO {
                     }
                 }
 
-                // Chấm bài theo đáp án từ DB (bỏ qua hoàn toàn mọi điểm/isCorrect do giao diện truyền)
                 QuizAttempt gradedAttempt = new QuizAttempt();
                 gradedAttempt.setId(attempt.getId());
                 gradedAttempt.setStudent(activeUser);
@@ -356,7 +335,6 @@ public class QuizAttemptDAO extends DAO {
                         .divide(BigDecimal.valueOf(totalQuestions), 2, RoundingMode.HALF_UP);
                 Instant submittedAt = Instant.now();
 
-                // Lưu toàn bộ câu trả lời và cập nhật lượt làm trong cùng 1 transaction (dùng chung this.con)
                 StudentAnswerDAO.insertAll(this.con, gradedAnswers);
 
                 String updSql = "UPDATE quiz_attempts SET status = 'SUBMITTED', total_questions = ?, "
@@ -387,17 +365,13 @@ public class QuizAttemptDAO extends DAO {
             restoreAutoCommit(prevAutoCommit);
         }
 
-        // Nộp lặp lượt đã SUBMITTED -> trả kết quả đã lưu
+        // Idempotent retry: return the persisted result without re-grading.
         if (alreadySubmitted) {
             return getResult(learner, attempt);
         }
         throw new IllegalStateException("Không thể hoàn tất nộp bài.");
     }
 
-    /**
-     * Hủy lượt đang làm (khi người học rời bài / đóng cửa sổ / đăng xuất và xác nhận hủy).
-     * Chỉ chuyển IN_PROGRESS -> CANCELLED; không đổi SUBMITTED thành CANCELLED.
-     */
     public void cancelAttempt(User learner, QuizAttempt attempt) throws SQLException {
         if (learner == null || learner.getId() == null) {
             throw new SecurityException("Phiên đăng nhập không hợp lệ.");
@@ -444,10 +418,6 @@ public class QuizAttemptDAO extends DAO {
         }
     }
 
-    /**
-     * Điểm tích hợp cho luồng đăng nhập M1: hủy toàn bộ lượt IN_PROGRESS còn sót của tài khoản sau dừng bất thường.
-     * Không xóa bản ghi và không ảnh hưởng các lượt SUBMITTED.
-     */
     public void cancelUnfinishedAttempts(User user) throws SQLException {
         if (user == null || user.getId() == null) {
             throw new SecurityException("Tài khoản không hợp lệ.");
@@ -470,9 +440,6 @@ public class QuizAttemptDAO extends DAO {
         }
     }
 
-    /**
-     * Lấy danh sách các quiz từng có lượt SUBMITTED của người học (kể cả quiz CLOSED / bài học ẩn / khóa CLOSED).
-     */
     public List<Quiz> getHistoryQuizzes(User learner) throws SQLException {
         if (learner == null || learner.getId() == null) {
             throw new SecurityException("Phiên đăng nhập không hợp lệ.");
@@ -501,9 +468,6 @@ public class QuizAttemptDAO extends DAO {
         return quizzes;
     }
 
-    /**
-     * Lấy danh sách lượt SUBMITTED của người học cho một quiz (sắp thời gian nộp giảm dần).
-     */
     public List<QuizAttempt> getHistory(User learner, Quiz quiz) throws SQLException {
         if (learner == null || learner.getId() == null) {
             throw new SecurityException("Phiên đăng nhập không hợp lệ.");
@@ -540,10 +504,6 @@ public class QuizAttemptDAO extends DAO {
         return list;
     }
 
-    /**
-     * Lấy điểm cao nhất trong các lượt SUBMITTED của (learner, quiz).
-     * Trả về null nếu chưa có lượt nộp nào (giao diện hiển thị "Chưa nộp bài", không phải 0).
-     */
     public BigDecimal getBestScore(User learner, Quiz quiz) throws SQLException {
         if (learner == null || learner.getId() == null) {
             throw new SecurityException("Phiên đăng nhập không hợp lệ.");
@@ -560,17 +520,13 @@ public class QuizAttemptDAO extends DAO {
             ps.setLong(2, quiz.getId());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getBigDecimal("best_score"); // null nếu chưa có lượt SUBMITTED
+                    return rs.getBigDecimal("best_score");
                 }
                 return null;
             }
         }
     }
 
-    /**
-     * Lấy kết quả chi tiết của lượt SUBMITTED thuộc chính người học, kèm câu hỏi, 4 phương án và đáp án đúng.
-     * Không phụ thuộc quiz còn PUBLISHED hay bài học còn hiển thị.
-     */
     public QuizAttempt getResult(User learner, QuizAttempt attempt) throws SQLException {
         if (learner == null || learner.getId() == null) {
             throw new SecurityException("Phiên đăng nhập không hợp lệ.");
@@ -620,7 +576,6 @@ public class QuizAttemptDAO extends DAO {
         result.setQuiz(quiz);
 
         List<StudentAnswer> savedAnswers = StudentAnswerDAO.getAnswersOfAttempt(this.con, result);
-        // Gắn lại đối tượng Question đầy đủ (kèm 4 phương án & đáp án đúng) vào mỗi StudentAnswer
         Map<Long, Question> qById = new HashMap<>();
         for (Question q : questions) {
             qById.put(q.getId(), q);
@@ -635,10 +590,6 @@ public class QuizAttemptDAO extends DAO {
         return result;
     }
 
-    /**
-     * Phương thức dùng chung với M4: đếm tổng số lượt bắt đầu của quiz (tính cả CANCELLED)
-     * để khóa chỉnh sửa trực tiếp đề đã phát sinh lượt làm.
-     */
     public int countAttemptsByQuiz(Long quizId) throws SQLException {
         if (quizId == null) {
             return 0;
@@ -655,7 +606,6 @@ public class QuizAttemptDAO extends DAO {
         try {
             this.con.rollback();
         } catch (SQLException ignored) {
-            // Bỏ qua lỗi phụ khi rollback
         }
     }
 
@@ -663,7 +613,6 @@ public class QuizAttemptDAO extends DAO {
         try {
             this.con.setAutoCommit(prev);
         } catch (SQLException ignored) {
-            // Bỏ qua lỗi khôi phục autoCommit
         }
     }
 }

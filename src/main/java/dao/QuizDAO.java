@@ -21,11 +21,6 @@ public class QuizDAO extends DAO {
         super();
     }
 
-    /**
-     * Lấy danh sách quiz đang nhận lượt làm mới (PUBLISHED) của bài học.
-     * Kiểm tra trực tiếp DB: tài khoản active (STUDENT hoặc TEACHER), bài học đang hiển thị,
-     * người học đã ghi danh và không phải chủ khóa học. Course CLOSED không thu hồi quyền học đã ghi danh.
-     */
     public List<Quiz> getAvailableQuizzesOfLesson(User learner, Lesson lesson) throws SQLException {
         if (learner == null || learner.getId() == null) {
             throw new SecurityException("Phiên đăng nhập không hợp lệ.");
@@ -112,8 +107,7 @@ public class QuizDAO extends DAO {
                         q.setSourceQuiz(src);
                     }
 
-                    // Đóng gói danh sách câu hỏi rỗng đúng số lượng để giao diện đọc q.getQuestions().size()
-                    // mà không nạp nội dung/đáp án trước khi bắt đầu lượt làm.
+                    // Placeholder list exposes question count without loading question content.
                     int qCount = rs.getInt("question_count");
                     List<Question> stubs = new ArrayList<>(qCount);
                     for (int i = 0; i < qCount; i++) {
@@ -127,9 +121,6 @@ public class QuizDAO extends DAO {
         return quizzes;
     }
 
-    /**
-     * Khóa bản ghi quiz (SELECT ... FOR UPDATE) trong giao dịch bắt đầu lượt làm.
-     */
     public static Quiz findByIdForUpdate(Connection con, Long quizId) throws SQLException {
         if (quizId == null) {
             throw new IllegalArgumentException("Mã quiz không hợp lệ.");

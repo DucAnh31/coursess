@@ -38,7 +38,6 @@ public class QuizAttemptFrm extends JFrame implements ActionListener {
     private QuizAttempt attempt;
 
     private List<Question> questions = new ArrayList<>();
-    // Lựa chọn làm dở CHỈ lưu trong bộ nhớ RAM (questionId -> optionId), không ghi DB/file.
     private final Map<Long, Long> selectedOptions = new LinkedHashMap<>();
 
     private JLabel lblQuizTitle;
@@ -213,7 +212,6 @@ public class QuizAttemptFrm extends JFrame implements ActionListener {
             } else {
                 sa.setSelectedOption(null);
             }
-            // Không gán điểm hoặc isCorrect ở phía giao diện
             sa.setIsCorrect(null);
             list.add(sa);
         }
