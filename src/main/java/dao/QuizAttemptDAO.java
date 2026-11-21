@@ -22,6 +22,7 @@ import model.QuizAttempt;
 import model.StudentAnswer;
 import model.User;
 import model.enums.AttemptStatus;
+import model.enums.CourseStatus;
 import model.enums.QuizStatus;
 import model.enums.UserRole;
 
@@ -93,9 +94,24 @@ public class QuizAttemptDAO extends DAO {
             if (!isEnrolled(this.con, activeUser.getId(), lockedQuiz.getLesson().getCourse().getId())) {
                 throw new SecurityException("Bạn chưa ghi danh khóa học chứa quiz này.");
             }
+            if (lockedQuiz.getLesson().getCourse().getStatus() == CourseStatus.DRAFT) {
+                throw new IllegalStateException("Khóa học chưa được xuất bản.");
+            }
             if (!Boolean.TRUE.equals(lockedQuiz.getLesson().getIsVisible())
                     || lockedQuiz.getStatus() != QuizStatus.PUBLISHED) {
                 throw new IllegalStateException("Quiz không còn khả dụng để bắt đầu lượt mới.");
+            }
+
+            int totalQuestions;
+            try (PreparedStatement ps = this.con.prepareStatement("SELECT COUNT(*) FROM questions WHERE quiz_id = ?")) {
+                ps.setLong(1, lockedQuiz.getId());
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    totalQuestions = rs.getInt(1);
+                }
+            }
+            if (totalQuestions <= 0) {
+                throw new IllegalStateException("Quiz chưa có câu hỏi hợp lệ.");
             }
 
             String findSql = "SELECT id, status, total_questions, started_at FROM quiz_attempts "
@@ -116,18 +132,6 @@ public class QuizAttemptDAO extends DAO {
                         return existing;
                     }
                 }
-            }
-
-            int totalQuestions;
-            try (PreparedStatement ps = this.con.prepareStatement("SELECT COUNT(*) FROM questions WHERE quiz_id = ?")) {
-                ps.setLong(1, lockedQuiz.getId());
-                try (ResultSet rs = ps.executeQuery()) {
-                    rs.next();
-                    totalQuestions = rs.getInt(1);
-                }
-            }
-            if (totalQuestions <= 0) {
-                throw new IllegalStateException("Quiz chưa có câu hỏi hợp lệ.");
             }
 
             Instant now = Instant.now();
@@ -209,6 +213,9 @@ public class QuizAttemptDAO extends DAO {
         }
         // Keep isCorrect unloaded (null) until submission.
         List<Question> questions = QuestionDAO.getQuestionsOfQuiz(this.con, quiz, false);
+        if (questions.isEmpty()) {
+            throw new IllegalStateException("Quiz hiện không có câu hỏi hợp lệ.");
+        }
         quiz.setQuestions(questions);
         loaded.setQuiz(quiz);
         return loaded;

@@ -353,6 +353,9 @@ public class QuizDAO extends DAO {
         if (!lessonVisible) {
             throw new IllegalStateException("Bài học hiện ngừng cung cấp nội dung học.");
         }
+        if (courseStatus == CourseStatus.DRAFT) {
+            throw new IllegalStateException("Khóa học chưa được xuất bản.");
+        }
 
         Course course = new Course();
         course.setId(courseId);
@@ -370,7 +373,8 @@ public class QuizDAO extends DAO {
 
         String quizSql = "SELECT q.id, q.title, q.status, q.published_at, q.created_by, q.source_quiz_id, "
                 + "(SELECT COUNT(*) FROM questions qu WHERE qu.quiz_id = q.id) AS question_count "
-                + "FROM quizzes q WHERE q.lesson_id = ? AND q.status = 'PUBLISHED' ORDER BY q.id ASC";
+                + "FROM quizzes q WHERE q.lesson_id = ? AND q.status = 'PUBLISHED' "
+                + "AND EXISTS (SELECT 1 FROM questions qu WHERE qu.quiz_id = q.id) ORDER BY q.id ASC";
         List<Quiz> quizzes = new ArrayList<>();
         try (PreparedStatement ps = this.con.prepareStatement(quizSql)) {
             ps.setLong(1, lesson.getId());
