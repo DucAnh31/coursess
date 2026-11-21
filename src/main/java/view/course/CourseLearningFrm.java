@@ -46,6 +46,7 @@ import model.User;
 import model.enums.CourseStatus;
 import model.enums.UserRole;
 import view.MainFrm;
+import view.quiz.QuizListFrm;
 
 public class CourseLearningFrm extends JPanel implements ActionListener {
     private final User student;
@@ -66,6 +67,7 @@ public class CourseLearningFrm extends JPanel implements ActionListener {
     };
     private final JTable outDocuments = new JTable(documentModel);
     private final JButton subOpenVideo = new JButton("Xem video trên YouTube");
+    private final JButton subQuiz = new JButton("Làm bài kiểm tra (Quiz)");
     private final JButton subDownload = new JButton("Tải tài liệu");
     private final JButton subReload = new JButton("Tải lại bài học");
     private final JButton subBack = new JButton("Quay lại");
@@ -112,6 +114,7 @@ public class CourseLearningFrm extends JPanel implements ActionListener {
         videoInformation.add(new JLabel("Video được mở bằng trình duyệt mặc định. Cần kết nối Internet."));
         JPanel videoButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         videoButtons.add(subOpenVideo);
+        videoButtons.add(subQuiz);
         JPanel video = new JPanel(new BorderLayout(10, 10));
         video.setBorder(BorderFactory.createTitledBorder("Video bài học"));
         video.add(videoInformation, BorderLayout.CENTER);
@@ -146,10 +149,12 @@ public class CourseLearningFrm extends JPanel implements ActionListener {
         footer.add(outNotice, BorderLayout.NORTH);
         footer.add(rightActions, BorderLayout.SOUTH);
         subOpenVideo.addActionListener(this);
+        subQuiz.addActionListener(this);
         subDownload.addActionListener(this);
         subReload.addActionListener(this);
         subBack.addActionListener(this);
         subOpenVideo.setEnabled(false);
+        subQuiz.setEnabled(false);
         subDownload.setEnabled(false);
 
         setLayout(new BorderLayout(12, 12));
@@ -222,6 +227,7 @@ public class CourseLearningFrm extends JPanel implements ActionListener {
 
     private void clearLesson() {
         subOpenVideo.setEnabled(false);
+        subQuiz.setEnabled(false);
         subDownload.setEnabled(false);
         outLesson.setText("Chọn một bài học để bắt đầu.");
         outVideoUrl.setText("");
@@ -334,6 +340,7 @@ public class CourseLearningFrm extends JPanel implements ActionListener {
                 outLesson.setText(lesson.getOrderIndex() + ". " + lesson.getTitle());
                 outVideoUrl.setText(lesson.getVideoUrl());
                 subOpenVideo.setEnabled(true);
+                subQuiz.setEnabled(true);
                 outNotice.setText(documents.isEmpty() ? "Bài học này chưa có tài liệu được cung cấp."
                         : "Chọn tài liệu rồi bấm Tải tài liệu để lưu về máy.");
             } catch (SQLException e) {
@@ -352,6 +359,14 @@ public class CourseLearningFrm extends JPanel implements ActionListener {
             } catch (SQLException | IOException | IllegalArgumentException | UnsupportedOperationException | SecurityException e) {
                 outNotice.setText(e.getMessage());
                 JOptionPane.showMessageDialog(this, e.getMessage(), "Không thể mở video", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (event.getSource() == subQuiz) {
+            try {
+                Lesson lesson = checkLesson();
+                new QuizListFrm(student, lesson).setVisible(true);
+            } catch (SQLException e) {
+                outNotice.setText(e.getMessage());
+                JOptionPane.showMessageDialog(this, e.getMessage(), "Không thể mở danh sách quiz", JOptionPane.ERROR_MESSAGE);
             }
         } else if (event.getSource() == subDownload) {
             int selected = outDocuments.getSelectedRow();
