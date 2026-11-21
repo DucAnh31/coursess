@@ -78,6 +78,30 @@ public class LessonDAO extends DAO {
         }
     }
 
+    public boolean existsByCourseIdAndOrderIndexAndNotId(Long courseId, Integer orderIndex, Long excludeLessonId) throws SQLException {
+        String sql = "SELECT 1 FROM lessons WHERE course_id = ? AND order_index = ? AND id != ? LIMIT 1";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, courseId);
+            ps.setInt(2, orderIndex);
+            ps.setLong(3, excludeLessonId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    public boolean updateLesson(Lesson lesson) throws SQLException {
+        String sql = "UPDATE lessons SET title = ?, video_url = ?, order_index = ?, is_visible = ? WHERE id = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, lesson.getTitle());
+            ps.setString(2, lesson.getVideoUrl() != null ? lesson.getVideoUrl() : "");
+            ps.setInt(3, lesson.getOrderIndex() != null ? lesson.getOrderIndex() : 1);
+            ps.setBoolean(4, lesson.getIsVisible() != null ? lesson.getIsVisible() : true);
+            ps.setLong(5, lesson.getId());
+            return ps.executeUpdate() > 0;
+        }
+    }
+
     public int getNextOrderIndex(Long courseId) throws SQLException {
         String sql = "SELECT COALESCE(MAX(order_index), 0) + 1 FROM lessons WHERE course_id = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {

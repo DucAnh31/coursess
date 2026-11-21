@@ -63,6 +63,7 @@ public class LessonAddFrm extends JFrame implements ActionListener {
     private DefaultTableModel tableModel;
     private JButton btnReviewCourse;
     private JButton btnCreateQuiz;
+    private JButton btnEditLesson;
     private JButton btnClose;
 
     private File selectedAttachmentFile = null;
@@ -245,6 +246,11 @@ public class LessonAddFrm extends JFrame implements ActionListener {
         btnCreateQuiz.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btnCreateQuiz.addActionListener(this);
         leftActions.add(btnCreateQuiz);
+
+        btnEditLesson = new JButton("Sửa thông tin bài học");
+        btnEditLesson.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnEditLesson.addActionListener(this);
+        leftActions.add(btnEditLesson);
         bottomPanel.add(leftActions, BorderLayout.WEST);
 
         JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
@@ -414,6 +420,14 @@ public class LessonAddFrm extends JFrame implements ActionListener {
             }
             Lesson selectedLesson = lessons.get(selectedRow);
             new ManageQuizFrm(teacher, selectedLesson).setVisible(true);
+        } else if (event.getSource() == btnEditLesson) {
+            int selectedRow = tblLessons.getSelectedRow();
+            if (selectedRow < 0 || selectedRow >= lessons.size()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn một bài học trong bảng để sửa thông tin!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            Lesson selectedLesson = lessons.get(selectedRow);
+            new LessonEditFrm(teacher, course, selectedLesson, this::loadLessons).setVisible(true);
         } else if (event.getSource() == btnChooseAttachment) {
             chooseAttachment();
         } else if (event.getSource() == btnTestVideo) {

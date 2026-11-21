@@ -14,6 +14,8 @@ import java.awt.Image;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -28,8 +30,10 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
@@ -235,14 +239,53 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         tblLessons.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
         tblLessons.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
 
+        tblLessons.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                updateEditButtonState();
+            }
+        });
+
         tblLessons.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
+                int row = tblLessons.rowAtPoint(e.getPoint());
+                if (row < 0) {
+                    tblLessons.clearSelection();
+                    updateEditButtonState();
+                } else if (e.getClickCount() == 2) {
                     openSelectedLessonVideo();
                 }
             }
         });
+
+        tblLessons.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    tblLessons.clearSelection();
+                    updateEditButtonState();
+                }
+            }
+        });
+
+        JPopupMenu lessonPopup = new JPopupMenu();
+        JMenuItem popEdit = new JMenuItem("Sửa thông tin bài học");
+        popEdit.addActionListener(e -> openEditSelectedLesson());
+        JMenuItem popQuiz = new JMenuItem("Tạo quiz cho bài học");
+        popQuiz.addActionListener(e -> openCreateQuiz());
+        JMenuItem popVideo = new JMenuItem("Mở video bài học");
+        popVideo.addActionListener(e -> openSelectedLessonVideo());
+        JMenuItem popDeselect = new JMenuItem("Bỏ chọn (Quay về sửa khóa học)");
+        popDeselect.addActionListener(e -> {
+            tblLessons.clearSelection();
+            updateEditButtonState();
+        });
+        lessonPopup.add(popEdit);
+        lessonPopup.add(popQuiz);
+        lessonPopup.add(popVideo);
+        lessonPopup.addSeparator();
+        lessonPopup.add(popDeselect);
+        tblLessons.setComponentPopupMenu(lessonPopup);
 
         JScrollPane tableScroll = new JScrollPane(tblLessons);
         tableScroll.setBorder(BorderFactory.createTitledBorder("Danh sách các bài học sẽ được xuất bản"));
@@ -258,7 +301,7 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         btnAddLesson.addActionListener(this);
         leftActions.add(btnAddLesson);
 
-        btnEditCourse = new JButton("Sửa thông tin");
+        btnEditCourse = new JButton("Sửa thông tin khóa học");
         btnEditCourse.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btnEditCourse.addActionListener(this);
         leftActions.add(btnEditCourse);
@@ -357,6 +400,8 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
             }
 
             lblLessonCountValue.setText(lessons.size() + " bài học");
+            tblLessons.clearSelection();
+            updateEditButtonState();
 
             if (course.getTitle() != null && !course.getTitle().isBlank()
                     && course.getDescription() != null && !course.getDescription().isBlank()) {
@@ -455,6 +500,25 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         }
     }
 
+    private void openEditSelectedLesson() {
+        int selectedRow = tblLessons.getSelectedRow();
+        if (selectedRow < 0 || selectedRow >= lessons.size()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn một bài học trong bảng để sửa thông tin!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        Lesson selectedLesson = lessons.get(selectedRow);
+        new LessonEditFrm(teacher, course, selectedLesson, this).setVisible(true);
+    }
+
+    private void updateEditButtonState() {
+        int selectedRow = tblLessons.getSelectedRow();
+        if (selectedRow >= 0 && selectedRow < lessons.size()) {
+            btnEditCourse.setText("Sửa thông tin bài học");
+        } else {
+            btnEditCourse.setText("Sửa thông tin khóa học");
+        }
+    }
+
     private void openCreateQuiz() {
         int selectedRow = tblLessons.getSelectedRow();
         if (selectedRow < 0 || selectedRow >= lessons.size()) {
@@ -499,7 +563,12 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         if (event.getSource() == btnPublish) {
             publishCourse();
         } else if (event.getSource() == btnEditCourse) {
-            new CourseCreateFrm(teacher, course).setVisible(true);
+            int selectedRow = tblLessons.getSelectedRow();
+            if (selectedRow >= 0 && selectedRow < lessons.size()) {
+                openEditSelectedLesson();
+            } else {
+                new CourseCreateFrm(teacher, course).setVisible(true);
+            }
         } else if (event.getSource() == btnCreateQuiz) {
             openCreateQuiz();
         } else if (event.getSource() == btnWatchVideo) {
