@@ -40,6 +40,7 @@ import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import model.Category;
 import model.Course;
 import model.User;
@@ -114,7 +115,9 @@ public class CourseListFrm extends JPanel implements ActionListener {
 
         outsubCourses.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         outsubCourses.setRowHeight(68);
-        outsubCourses.setAutoCreateRowSorter(true);
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+        sorter.setSortable(0, false);
+        outsubCourses.setRowSorter(sorter);
         outsubCourses.getColumnModel().getColumn(0).setMaxWidth(110);
         outsubCourses.getColumnModel().getColumn(1).setPreferredWidth(300);
         outsubCourses.addMouseListener(new MouseAdapter() {
