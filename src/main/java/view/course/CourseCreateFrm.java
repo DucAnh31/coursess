@@ -37,13 +37,9 @@ import model.Course;
 import model.User;
 import model.enums.CourseStatus;
 
-/**
- * Màn hình Tạo khóa học mới.
- * Tham khảo khung form nhập liệu từ prototype.html (Thông tin cơ bản: Tên, Danh mục, Mô tả, Ảnh bìa).
- * Giao diện thuần Swing, loại bỏ màu mè.
- */
 public class CourseCreateFrm extends JFrame implements ActionListener {
     private final User teacher;
+    private Course courseToEdit = null;
     private CourseDAO courseDAO;
     private CategoryDAO categoryDAO;
 
@@ -59,8 +55,13 @@ public class CourseCreateFrm extends JFrame implements ActionListener {
     private File selectedThumbnailFile = null;
 
     public CourseCreateFrm(User teacher) {
-        super("Tạo khóa học mới - COURSESS");
+        this(teacher, null);
+    }
+
+    public CourseCreateFrm(User teacher, Course courseToEdit) {
+        super(courseToEdit == null ? "Tạo khóa học mới - COURSESS" : "Chỉnh sửa khóa học - COURSESS");
         this.teacher = teacher;
+        this.courseToEdit = courseToEdit;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setSize(780, 620);
         setLocationRelativeTo(null);
@@ -74,6 +75,7 @@ public class CourseCreateFrm extends JFrame implements ActionListener {
 
         initComponents();
         loadCategories();
+        initEditData();
     }
 
     private void initComponents() {
@@ -85,10 +87,13 @@ public class CourseCreateFrm extends JFrame implements ActionListener {
         JPanel headerContent = new JPanel(new BorderLayout(4, 4));
         headerContent.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
 
-        JLabel lblHeader = new JLabel("TẠO KHÓA HỌC MỚI");
+        boolean isEdit = (courseToEdit != null);
+        JLabel lblHeader = new JLabel(isEdit ? "CHỈNH SỬA KHÓA HỌC" : "TẠO KHÓA HỌC MỚI");
         lblHeader.setFont(new Font("Segoe UI", Font.BOLD, 17));
 
-        JLabel lblSub = new JLabel("Nhập thông tin ban đầu cho khóa học. Khóa học sẽ được tạo ở trạng thái Bản nháp (DRAFT).");
+        JLabel lblSub = new JLabel(isEdit
+                ? "Chỉnh sửa thông tin khóa học. Nhấn Lưu thay đổi để cập nhật."
+                : "Nhập thông tin ban đầu cho khóa học. Khóa học sẽ được tạo ở trạng thái Bản nháp (DRAFT).");
         lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 
         headerContent.add(lblHeader, BorderLayout.NORTH);
@@ -96,7 +101,7 @@ public class CourseCreateFrm extends JFrame implements ActionListener {
         headerPanel.add(headerContent, BorderLayout.CENTER);
 
         JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(BorderFactory.createTitledBorder("Thông tin khóa học mới"));
+        formPanel.setBorder(BorderFactory.createTitledBorder(isEdit ? "Thông tin khóa học" : "Thông tin khóa học mới"));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(8, 10, 8, 10);
@@ -184,7 +189,7 @@ public class CourseCreateFrm extends JFrame implements ActionListener {
         btnCancel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btnCancel.addActionListener(this);
 
-        btnSave = new JButton("Lưu & Tiếp tục thêm bài học ->");
+        btnSave = new JButton(isEdit ? "Lưu thay đổi" : "Lưu & Tiếp tục thêm bài học ->");
         btnSave.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnSave.addActionListener(this);
 
@@ -208,6 +213,39 @@ public class CourseCreateFrm extends JFrame implements ActionListener {
             }
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Không thể tải danh mục: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void initEditData() {
+        if (courseToEdit == null) return;
+
+        txtTitle.setText(courseToEdit.getTitle() != null ? courseToEdit.getTitle() : "");
+        txtDescription.setText(courseToEdit.getDescription() != null ? courseToEdit.getDescription() : "");
+
+        if (courseToEdit.getCategory() != null && courseToEdit.getCategory().getId() != null) {
+            Long targetCatId = courseToEdit.getCategory().getId();
+            for (int i = 0; i < cboCategory.getItemCount(); i++) {
+                Category c = cboCategory.getItemAt(i);
+                if (c.getId() != null && c.getId().equals(targetCatId)) {
+                    cboCategory.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
+
+        String thumbPath = courseToEdit.getThumbnailUrl();
+        if (thumbPath != null && !thumbPath.isBlank()) {
+            lblThumbnailPath.setText(thumbPath);
+            File f = new File(thumbPath);
+            if (f.exists()) {
+                try {
+                    ImageIcon icon = new ImageIcon(f.getAbsolutePath());
+                    Image img = icon.getImage().getScaledInstance(140, 85, Image.SCALE_SMOOTH);
+                    lblThumbnailPreview.setIcon(new ImageIcon(img));
+                    lblThumbnailPreview.setText("");
+                } catch (Exception ignored) {
+                }
+            }
         }
     }
 
@@ -275,6 +313,32 @@ public class CourseCreateFrm extends JFrame implements ActionListener {
         String storedThumbnailPath = null;
         if (selectedThumbnailFile != null) {
             storedThumbnailPath = copyThumbnailToUploads(selectedThumbnailFile);
+        } else if (courseToEdit != null) {
+            storedThumbnailPath = courseToEdit.getThumbnailUrl();
+        }
+
+        if (courseToEdit != null) {
+            courseToEdit.setTitle(title);
+            courseToEdit.setCategory(selectedCategory);
+            courseToEdit.setDescription(description);
+            courseToEdit.setThumbnailUrl(storedThumbnailPath);
+
+            try {
+                boolean success = courseDAO.updateCourse(courseToEdit);
+                if (success) {
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "Cập nhật thông tin khóa học thành công!",
+                            "Thành công",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    dispose();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Không thể cập nhật khóa học trong CSDL!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật khóa học: " + e.getMessage(), "Lỗi SQL", JOptionPane.ERROR_MESSAGE);
+            }
+            return;
         }
 
         Course course = new Course();

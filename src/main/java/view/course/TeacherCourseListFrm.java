@@ -32,11 +32,6 @@ import model.User;
 import model.enums.CourseStatus;
 import model.enums.UserRole;
 
-/**
- * Giao diện Quản lý khóa học chính của giảng viên (Mô-đun M2).
- * Tham khảo cấu trúc khung từ prototype.html (bộ lọc trạng thái, tìm kiếm, bảng dữ liệu, thanh thao tác).
- * Thiết kế thuần Swing, tối giản, rõ ràng, không màu mè.
- */
 public class TeacherCourseListFrm extends JFrame implements ActionListener {
     private final User teacher;
     private List<Course> allCourses = new ArrayList<>();
@@ -51,6 +46,7 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
     private JTable tblCourses;
     private DefaultTableModel tableModel;
     private JButton btnCreateCourse;
+    private JButton btnEditCourse;
     private JButton btnOpenCourse;
     private JButton btnAddLesson;
     private JButton btnRefresh;
@@ -102,40 +98,41 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
         JPanel headerContent = new JPanel(new BorderLayout(4, 4));
         headerContent.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
 
-        JLabel lblTitle = new JLabel("HỆ THỐNG QUẢN LÝ KHÓA HỌC (COURSESS)");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        JLabel lblHeader = new JLabel("DANH SÁCH KHÓA HỌC PHỤ TRÁCH");
+        lblHeader.setFont(new Font("Segoe UI", Font.BOLD, 17));
 
-        String teacherName = (teacher != null && teacher.getFullName() != null) ? teacher.getFullName() : "Giảng viên";
-        String username = (teacher != null && teacher.getUsername() != null) ? teacher.getUsername() : "";
-        JLabel lblSubtitle = new JLabel("Giảng viên: " + teacherName + " (" + username + ") | Quản lý khóa học, soạn thảo bài học và xuất bản.");
-        lblSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        JLabel lblSub = new JLabel("Giảng viên: " + teacher.getFullName() + " (@" + teacher.getUsername() + ")");
+        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 
-        headerContent.add(lblTitle, BorderLayout.NORTH);
-        headerContent.add(lblSubtitle, BorderLayout.SOUTH);
+        headerContent.add(lblHeader, BorderLayout.NORTH);
+        headerContent.add(lblSub, BorderLayout.SOUTH);
         headerPanel.add(headerContent, BorderLayout.CENTER);
 
-        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 6));
-        filterPanel.setBorder(BorderFactory.createTitledBorder("Bộ lọc và tìm kiếm"));
+        JPanel topPanel = new JPanel(new BorderLayout(8, 8));
+        topPanel.add(headerPanel, BorderLayout.NORTH);
+
+        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+        filterPanel.setBorder(BorderFactory.createTitledBorder("Tìm kiếm & Bộ lọc khóa học"));
 
         JLabel lblSearch = new JLabel("Từ khóa:");
-        lblSearch.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblSearch.setFont(new Font("Segoe UI", Font.BOLD, 12));
         txtSearch = new JTextField(18);
-        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        txtSearch.setPreferredSize(new Dimension(180, 26));
+        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        txtSearch.addActionListener(this);
 
         JLabel lblStatus = new JLabel("Trạng thái:");
-        lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        String[] statusOptions = {"Tất cả", "Bản nháp (DRAFT)", "Đang mở (OPEN)", "Ngừng ghi danh (CLOSED)"};
-        cboStatusFilter = new JComboBox<>(statusOptions);
-        cboStatusFilter.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        cboStatusFilter.setPreferredSize(new Dimension(170, 26));
+        lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        String[] statuses = {"-- Tất cả trạng thái --", "Bản nháp (DRAFT)", "Đang mở (OPEN)", "Ngừng ghi danh (CLOSED)"};
+        cboStatusFilter = new JComboBox<>(statuses);
+        cboStatusFilter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        cboStatusFilter.addActionListener(this);
 
-        btnFilter = new JButton("Lọc");
-        btnFilter.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnFilter = new JButton("Tìm kiếm");
+        btnFilter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         btnFilter.addActionListener(this);
 
         btnResetFilter = new JButton("Đặt lại");
-        btnResetFilter.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnResetFilter.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         btnResetFilter.addActionListener(this);
 
         filterPanel.add(lblSearch);
@@ -145,8 +142,6 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
         filterPanel.add(btnFilter);
         filterPanel.add(btnResetFilter);
 
-        JPanel topPanel = new JPanel(new BorderLayout(8, 8));
-        topPanel.add(headerPanel, BorderLayout.NORTH);
         topPanel.add(filterPanel, BorderLayout.SOUTH);
 
         String[] columnNames = {"Mã KH", "Tên khóa học", "Danh mục", "Số bài học", "Trạng thái"};
@@ -194,6 +189,10 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
         btnCreateCourse.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnCreateCourse.addActionListener(this);
 
+        btnEditCourse = new JButton("Sửa thông tin");
+        btnEditCourse.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnEditCourse.addActionListener(this);
+
         btnAddLesson = new JButton("Thêm bài học");
         btnAddLesson.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btnAddLesson.addActionListener(this);
@@ -203,6 +202,7 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
         btnOpenCourse.addActionListener(this);
 
         leftActions.add(btnCreateCourse);
+        leftActions.add(btnEditCourse);
         leftActions.add(btnAddLesson);
         leftActions.add(btnOpenCourse);
 
@@ -278,7 +278,7 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
                         c.getId(),
                         c.getTitle(),
                         categoryName,
-                        lessonCount,
+                        lessonCount + " bài học",
                         statusDisplay
                 });
             }
@@ -286,7 +286,9 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
     }
 
     private String formatStatus(CourseStatus status) {
-        if (status == null) return "Chưa rõ";
+        if (status == null) {
+            return "Chưa rõ";
+        }
         switch (status) {
             case DRAFT:
                 return "Bản nháp (DRAFT)";
@@ -307,6 +309,15 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
         return displayedCourses.get(selectedRow);
     }
 
+    private void editSelectedCourse() {
+        Course selected = getSelectedCourse();
+        if (selected == null) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn một khóa học trong bảng để chỉnh sửa!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        new CourseCreateFrm(teacher, selected).setVisible(true);
+    }
+
     private void openSelectedCourse() {
         Course selected = getSelectedCourse();
         if (selected == null) {
@@ -321,6 +332,8 @@ public class TeacherCourseListFrm extends JFrame implements ActionListener {
         if (event.getSource() == btnCreateCourse) {
             CourseCreateFrm createFrm = new CourseCreateFrm(teacher);
             createFrm.setVisible(true);
+        } else if (event.getSource() == btnEditCourse) {
+            editSelectedCourse();
         } else if (event.getSource() == btnOpenCourse) {
             openSelectedCourse();
         } else if (event.getSource() == btnAddLesson) {

@@ -39,11 +39,6 @@ import model.Lesson;
 import model.User;
 import model.enums.CourseStatus;
 
-/**
- * Màn hình Xem lại tổng thể khóa học & Xuất bản (Review & Publish).
- * Tham khảo khung từ prototype.html (Thông tin tổng quan + Kiểm tra điều kiện xuất bản + Bảng bài học + Nút xuất bản).
- * Thiết kế thuần Swing, tối giản, rõ ràng, không màu mè.
- */
 public class CourseReviewFrm extends JFrame implements ActionListener {
     private final User teacher;
     private Course course;
@@ -66,6 +61,7 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
 
     private JButton btnPublish;
     private JButton btnAddLesson;
+    private JButton btnEditCourse;
     private JButton btnWatchVideo;
     private JButton btnBack;
 
@@ -250,6 +246,11 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
         btnAddLesson.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         btnAddLesson.addActionListener(this);
         leftActions.add(btnAddLesson);
+
+        btnEditCourse = new JButton("Sửa thông tin");
+        btnEditCourse.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        btnEditCourse.addActionListener(this);
+        leftActions.add(btnEditCourse);
 
         btnWatchVideo = new JButton("Mở video bài học");
         btnWatchVideo.setFont(new Font("Segoe UI", Font.PLAIN, 13));
@@ -456,6 +457,8 @@ public class CourseReviewFrm extends JFrame implements ActionListener {
     public void actionPerformed(ActionEvent event) {
         if (event.getSource() == btnPublish) {
             publishCourse();
+        } else if (event.getSource() == btnEditCourse) {
+            new CourseCreateFrm(teacher, course).setVisible(true);
         } else if (event.getSource() == btnWatchVideo) {
             openSelectedLessonVideo();
         } else if (event.getSource() == btnAddLesson) {
