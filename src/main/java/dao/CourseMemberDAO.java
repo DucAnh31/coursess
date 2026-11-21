@@ -23,8 +23,11 @@ public class CourseMemberDAO extends DAO {
     }
 
     public CourseMember getByStudentAndCourse(Long studentId, Long courseId) throws SQLException {
-        String sql = "SELECT cm.*, c.title, c.status FROM course_members cm "
+        String sql = "SELECT cm.*, c.title, c.status, u.full_name AS student_name, "
+                + "u.username AS student_username, u.role AS student_role, u.is_active AS student_active "
+                + "FROM course_members cm "
                 + "JOIN courses c ON cm.course_id = c.id "
+                + "JOIN users u ON cm.student_id = u.id "
                 + "WHERE cm.student_id = ? AND cm.course_id = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setObject(1, studentId);
@@ -33,6 +36,10 @@ public class CourseMemberDAO extends DAO {
                 if (rs.next()) {
                     User student = new User();
                     student.setId(rs.getLong("student_id"));
+                    student.setFullName(rs.getString("student_name"));
+                    student.setUsername(rs.getString("student_username"));
+                    student.setRole(UserRole.valueOf(rs.getString("student_role")));
+                    student.setIsActive(rs.getBoolean("student_active"));
 
                     Course course = new Course();
                     course.setId(rs.getLong("course_id"));
