@@ -13,7 +13,6 @@ public final class Main {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             } catch (Exception e) {
-                // Giữ giao diện Swing mặc định nếu hệ điều hành không có look and feel.
             }
             new MainFrm().setVisible(true);
         });

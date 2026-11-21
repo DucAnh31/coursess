@@ -30,6 +30,27 @@ public class CategoryDAO extends DAO {
         return categories;
     }
 
+    public List<Category> findAll() throws SQLException {
+        return getAllCategories();
+    }
+
+    public Category findById(Long id) throws SQLException {
+        String sql = "SELECT id, name, description FROM categories WHERE id = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Category c = new Category();
+                    c.setId(rs.getLong("id"));
+                    c.setName(rs.getString("name"));
+                    c.setDescription(rs.getString("description"));
+                    return c;
+                }
+            }
+        }
+        return null;
+    }
+
     public Category addCategory(Category category) throws SQLException {
         String name = validateName(category);
         String sql = "INSERT INTO categories (name, description) VALUES (?, ?)";
