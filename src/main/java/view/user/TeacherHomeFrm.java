@@ -11,10 +11,12 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import model.User;
 import view.MainFrm;
+import view.course.TeacherCourseListFrm;
 
 public class TeacherHomeFrm extends JPanel implements ActionListener {
     private final User teacher;
     private final JLabel lblWelcome = new JLabel("", SwingConstants.CENTER);
+    private final JButton btnManageCourses = new JButton("Quản lý khóa học");
     private final JButton btnProfile = new JButton("Thông tin cá nhân");
     private final JButton btnLogout = new JButton("Đăng xuất");
 
@@ -27,8 +29,10 @@ public class TeacherHomeFrm extends JPanel implements ActionListener {
     private void initComponents() {
         lblWelcome.setText("Xin chào, " + teacher.getFullName());
         JPanel buttons = new JPanel();
+        buttons.add(btnManageCourses);
         buttons.add(btnProfile);
         buttons.add(btnLogout);
+        btnManageCourses.addActionListener(this);
         btnProfile.addActionListener(this);
         btnLogout.addActionListener(this);
 
@@ -41,7 +45,9 @@ public class TeacherHomeFrm extends JPanel implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent event) {
-        if (event.getSource() == btnProfile) {
+        if (event.getSource() == btnManageCourses) {
+            new TeacherCourseListFrm(teacher).setVisible(true);
+        } else if (event.getSource() == btnProfile) {
             MainFrm.showScreen(this, new ProfileFrm(teacher), "Thông tin cá nhân");
         } else if (event.getSource() == btnLogout) {
             int choice = JOptionPane.showConfirmDialog(this, "Bạn muốn đăng xuất?", "Đăng xuất",
