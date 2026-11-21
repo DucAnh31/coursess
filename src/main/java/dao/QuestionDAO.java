@@ -39,7 +39,7 @@ public class QuestionDAO extends DAO {
     }
 
     public boolean saveQuestions(Connection con, Long quizId, List<Question> questions) throws SQLException {
-        String deleteOptionsSql = "DELETE qo FROM question_options qo JOIN questions q ON qo.question_id = q.id WHERE q.quiz_id = ?";
+        String deleteOptionsSql = "DELETE FROM question_options WHERE question_id IN (SELECT id FROM questions WHERE quiz_id = ?)";
         try (PreparedStatement delOptStmt = con.prepareStatement(deleteOptionsSql)) {
             delOptStmt.setLong(1, quizId);
             delOptStmt.executeUpdate();

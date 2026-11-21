@@ -61,7 +61,9 @@ public class CreateQuizFrm extends JFrame implements ActionListener {
             this.quizDAO = new QuizDAO();
             this.questionDAO = new QuestionDAO();
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Lỗi kết nối cơ sở dữ liệu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            if (!java.awt.GraphicsEnvironment.isHeadless()) {
+                JOptionPane.showMessageDialog(this, "Lỗi kết nối cơ sở dữ liệu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
         }
 
         initComponents();
@@ -243,6 +245,18 @@ public class CreateQuizFrm extends JFrame implements ActionListener {
 
         lblNotice.setText("");
         return true;
+    }
+
+    public void setTitleText(String title) {
+        txtTitle.setText(title != null ? title : "");
+    }
+
+    public void setQuestions(List<Question> questions) {
+        this.questions = questions;
+    }
+
+    public String getNoticeText() {
+        return lblNotice.getText();
     }
 
     @Override

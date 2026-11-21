@@ -200,6 +200,25 @@ public class QuestionDialog extends JDialog implements ActionListener {
         return this.isConfirmed;
     }
 
+    public void setFormData(String content, String optA, String optB, String optC, String optD, Integer correctIndex) {
+        txtContent.setText(content != null ? content : "");
+        txtOptionA.setText(optA != null ? optA : "");
+        txtOptionB.setText(optB != null ? optB : "");
+        txtOptionC.setText(optC != null ? optC : "");
+        txtOptionD.setText(optD != null ? optD : "");
+        grpCorrect.clearSelection();
+        if (correctIndex != null) {
+            if (correctIndex == 1) radCorrectA.setSelected(true);
+            else if (correctIndex == 2) radCorrectB.setSelected(true);
+            else if (correctIndex == 3) radCorrectC.setSelected(true);
+            else if (correctIndex == 4) radCorrectD.setSelected(true);
+        }
+    }
+
+    public String getNoticeText() {
+        return lblNotice.getText();
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == btnSaveQuestion) {

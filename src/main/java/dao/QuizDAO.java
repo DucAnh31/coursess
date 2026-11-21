@@ -287,6 +287,7 @@ public class QuizDAO extends DAO {
             Quiz sourceQuiz = new Quiz();
             sourceQuiz.setId(sourceQuizId);
             newQuiz.setSourceQuiz(sourceQuiz);
+            newQuiz.setQuestions(questionDAO.getQuestionsByQuiz(newQuizId));
             return newQuiz;
         } catch (SQLException e) {
             con.rollback();
