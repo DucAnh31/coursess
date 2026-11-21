@@ -35,3 +35,9 @@ local.properties
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Storage directories
+/storage/thumbnails/*
+!/storage/thumbnails/.gitkeep
+/storage/documents/*
+!/storage/documents/.gitkeep

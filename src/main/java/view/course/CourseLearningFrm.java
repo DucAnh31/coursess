@@ -1,27 +1,35 @@
 package view.course;
 
+import dao.CourseMemberDAO;
 import dao.LessonDAO;
+import dao.LessonDocumentDAO;
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Desktop;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
+import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -29,363 +37,274 @@ import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.SwingConstants;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import model.Course;
+import model.CourseMember;
 import model.Lesson;
 import model.LessonDocument;
 import model.User;
+import model.enums.CourseStatus;
+import model.enums.UserRole;
 import view.MainFrm;
 import view.quiz.QuizListFrm;
 
-/**
- * Giao diện màn hình học tập của học sinh (Học theo khóa học).
- * Hiển thị danh sách các bài học của khóa học, video bài giảng, tài liệu đính kèm và bài kiểm tra (quiz).
- */
 public class CourseLearningFrm extends JPanel implements ActionListener {
     private final User student;
     private final Course course;
     private final JPanel parentFrame;
-
+    private final JLabel outCourse = new JLabel();
+    private final JLabel outLesson = new JLabel("Chọn một bài học để bắt đầu.");
+    private final JLabel outNotice = new JLabel(" ");
+    private final JTextField outVideoUrl = new JTextField();
+    private final DefaultListModel<String> lessonModel = new DefaultListModel<>();
+    private final JList<String> outLessons = new JList<>(lessonModel);
+    private final DefaultTableModel documentModel = new DefaultTableModel(
+            new String[]{"Tên tài liệu", "Dung lượng"}, 0) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+    private final JTable outDocuments = new JTable(documentModel);
+    private final JButton subOpenVideo = new JButton("Xem video trên YouTube");
+    private final JButton subQuiz = new JButton("Làm bài kiểm tra (Quiz)");
+    private final JButton subDownload = new JButton("Tải tài liệu");
+    private final JButton subReload = new JButton("Tải lại bài học");
+    private final JButton subBack = new JButton("Quay lại");
     private List<Lesson> lessons = new ArrayList<>();
-    private Lesson selectedLesson = null;
+    private final List<LessonDocument> documents = new ArrayList<>();
 
-    private JTable tblLessons;
-    private DefaultTableModel tableModel;
-
-    private JLabel lblSelectedTitle;
-    private JTextField txtVideoUrl;
-    private JLabel lblDocCount;
-    private JButton btnWatchVideo;
-    private JButton btnOpenDoc;
-    private JButton btnTakeQuiz;
-    private JButton subBack;
-    private JButton btnRefresh;
-
-    public CourseLearningFrm(User student, Course course) {
+    public CourseLearningFrm(User student, Course course) throws SQLException {
         this(student, course, null);
     }
 
-    public CourseLearningFrm(User student, Course course, JPanel parentFrame) {
+    public CourseLearningFrm(User student, Course course, JPanel parentFrame) throws SQLException {
         this.student = student;
         this.course = course;
         this.parentFrame = parentFrame;
-        setLayout(new BorderLayout(10, 10));
-        setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+        setLayout(new BorderLayout());
         initComponents();
         loadLessons();
     }
 
     private void initComponents() {
-        // --- 1. Header (NORTH) ---
         JPanel headerPanel = new JPanel(new BorderLayout(4, 4));
-        headerPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createEtchedBorder(),
-                BorderFactory.createEmptyBorder(10, 12, 10, 12)
-        ));
+        headerPanel.setBorder(BorderFactory.createEtchedBorder());
+        JPanel headerContent = new JPanel(new BorderLayout(4, 4));
+        headerContent.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
+        JLabel title = new JLabel("HỌC THEO KHÓA HỌC");
+        headerContent.add(title, BorderLayout.NORTH);
+        headerContent.add(outCourse, BorderLayout.SOUTH);
+        headerPanel.add(headerContent, BorderLayout.CENTER);
 
-        String courseTitle = (course != null && course.getTitle() != null) ? course.getTitle() : "Khóa học";
-        JLabel lblHeader = new JLabel("KHÓA HỌC: " + courseTitle);
-        lblHeader.setFont(new Font("Segoe UI", Font.BOLD, 16));
-
-        String teacherName = (course != null && course.getTeacher() != null && course.getTeacher().getFullName() != null)
-                ? course.getTeacher().getFullName() : "Chưa cập nhật";
-        String categoryName = (course != null && course.getCategory() != null && course.getCategory().getName() != null)
-                ? course.getCategory().getName() : "Chưa phân loại";
-        JLabel lblSub = new JLabel("Giảng viên: " + teacherName + "  |  Danh mục: " + categoryName);
-        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-
-        headerPanel.add(lblHeader, BorderLayout.NORTH);
-        headerPanel.add(lblSub, BorderLayout.SOUTH);
-        add(headerPanel, BorderLayout.NORTH);
-
-        // --- 2. Center Content (JSplitPane) ---
-        // Left: Danh sách bài học
-        JPanel leftPanel = new JPanel(new BorderLayout(6, 6));
-        leftPanel.setBorder(BorderFactory.createTitledBorder("Danh sách bài học"));
-
-        String[] columns = {"STT", "Tiêu đề bài học", "Video", "Tài liệu"};
-        tableModel = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-        tblLessons = new JTable(tableModel);
-        tblLessons.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tblLessons.setRowHeight(26);
-        tblLessons.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tblLessons.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
-
-        tblLessons.getColumnModel().getColumn(0).setPreferredWidth(45);
-        tblLessons.getColumnModel().getColumn(1).setPreferredWidth(230);
-        tblLessons.getColumnModel().getColumn(2).setPreferredWidth(60);
-        tblLessons.getColumnModel().getColumn(3).setPreferredWidth(70);
-
-        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-        centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
-        tblLessons.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
-        tblLessons.getColumnModel().getColumn(2).setCellRenderer(centerRenderer);
-        tblLessons.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
-
-        tblLessons.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                onLessonSelected();
+        outVideoUrl.setEditable(false);
+        outLessons.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        outLessons.setFixedCellHeight(28);
+        outLessons.addListSelectionListener(event -> {
+            if (!event.getValueIsAdjusting() && outLessons.getSelectedIndex() >= 0) {
+                actionPerformed(new ActionEvent(outLessons, ActionEvent.ACTION_PERFORMED, "lesson"));
             }
         });
+        JScrollPane lessonScroll = new JScrollPane(outLessons);
+        lessonScroll.setBorder(BorderFactory.createTitledBorder("Danh sách bài học"));
 
-        tblLessons.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    openVideo();
-                }
-            }
-        });
+        JPanel videoInformation = new JPanel(new GridLayout(3, 1, 5, 8));
+        videoInformation.add(outLesson);
+        videoInformation.add(outVideoUrl);
+        videoInformation.add(new JLabel("Video được mở bằng trình duyệt mặc định. Cần kết nối Internet."));
+        JPanel videoButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        videoButtons.add(subOpenVideo);
+        videoButtons.add(subQuiz);
+        JPanel video = new JPanel(new BorderLayout(10, 10));
+        video.setBorder(BorderFactory.createTitledBorder("Video bài học"));
+        video.add(videoInformation, BorderLayout.CENTER);
+        video.add(videoButtons, BorderLayout.SOUTH);
 
-        JScrollPane scrollTable = new JScrollPane(tblLessons);
-        leftPanel.add(scrollTable, BorderLayout.CENTER);
+        outDocuments.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        outDocuments.setRowHeight(26);
+        outDocuments.setAutoCreateRowSorter(true);
+        outDocuments.getColumnModel().getColumn(0).setPreferredWidth(350);
+        outDocuments.getSelectionModel().addListSelectionListener(event ->
+                subDownload.setEnabled(outDocuments.getSelectedRow() >= 0));
+        JPanel downloadButtons = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        downloadButtons.add(subDownload);
+        JPanel documentPanel = new JPanel(new BorderLayout(10, 10));
+        documentPanel.setBorder(BorderFactory.createTitledBorder("Tài liệu bài học"));
+        JScrollPane documentScroll = new JScrollPane(outDocuments);
+        documentScroll.setColumnHeaderView(outDocuments.getTableHeader());
+        documentPanel.add(documentScroll, BorderLayout.CENTER);
+        documentPanel.add(downloadButtons, BorderLayout.SOUTH);
 
-        // Right: Chi tiết bài học & thao tác
-        JPanel rightPanel = new JPanel(new BorderLayout(10, 10));
-        rightPanel.setBorder(BorderFactory.createTitledBorder("Nội dung bài học & Hoạt động"));
+        JPanel lessonContent = new JPanel(new BorderLayout(10, 10));
+        lessonContent.add(video, BorderLayout.NORTH);
+        lessonContent.add(documentPanel, BorderLayout.CENTER);
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, lessonScroll, lessonContent);
+        split.setDividerLocation(230);
+        split.setResizeWeight(0.28);
 
-        JPanel detailContainer = new JPanel();
-        detailContainer.setLayout(new BoxLayout(detailContainer, BoxLayout.Y_AXIS));
-        detailContainer.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        lblSelectedTitle = new JLabel("Chọn một bài học từ danh sách bên trái");
-        lblSelectedTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblSelectedTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        JLabel lblVideoLabel = new JLabel("Đường dẫn Video bài giảng:");
-        lblVideoLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        lblVideoLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        txtVideoUrl = new JTextField("Chưa chọn bài học");
-        txtVideoUrl.setEditable(false);
-        txtVideoUrl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        txtVideoUrl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
-        txtVideoUrl.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        lblDocCount = new JLabel("Tài liệu đính kèm: Chưa chọn bài học");
-        lblDocCount.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblDocCount.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        detailContainer.add(lblSelectedTitle);
-        detailContainer.add(Box.createVerticalStrut(14));
-        detailContainer.add(lblVideoLabel);
-        detailContainer.add(Box.createVerticalStrut(4));
-        detailContainer.add(txtVideoUrl);
-        detailContainer.add(Box.createVerticalStrut(12));
-        detailContainer.add(lblDocCount);
-        detailContainer.add(Box.createVerticalGlue());
-
-        // Buttons in Right panel
-        JPanel actionButtonsPanel = new JPanel(new GridLayout(3, 1, 8, 8));
-        actionButtonsPanel.setBorder(BorderFactory.createEmptyBorder(6, 10, 10, 10));
-
-        btnWatchVideo = new JButton("Xem video bài giảng");
-        btnWatchVideo.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnWatchVideo.setEnabled(false);
-        btnWatchVideo.addActionListener(this);
-
-        btnOpenDoc = new JButton("Mở tài liệu đính kèm");
-        btnOpenDoc.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        btnOpenDoc.setEnabled(false);
-        btnOpenDoc.addActionListener(this);
-
-        btnTakeQuiz = new JButton("Làm bài kiểm tra (Quiz)");
-        btnTakeQuiz.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnTakeQuiz.setEnabled(false);
-        btnTakeQuiz.addActionListener(this);
-
-        actionButtonsPanel.add(btnWatchVideo);
-        actionButtonsPanel.add(btnOpenDoc);
-        actionButtonsPanel.add(btnTakeQuiz);
-
-        rightPanel.add(detailContainer, BorderLayout.CENTER);
-        rightPanel.add(actionButtonsPanel, BorderLayout.SOUTH);
-
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
-        splitPane.setDividerLocation(470);
-        splitPane.setResizeWeight(0.55);
-        add(splitPane, BorderLayout.CENTER);
-
-        // --- 3. Footer (SOUTH) ---
-        JPanel footerPanel = new JPanel(new BorderLayout());
-        JPanel leftBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        subBack = new JButton("Quay lại");
+        JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightActions.add(subReload);
+        rightActions.add(subBack);
+        JPanel footer = new JPanel(new BorderLayout(8, 8));
+        footer.add(outNotice, BorderLayout.NORTH);
+        footer.add(rightActions, BorderLayout.SOUTH);
+        subOpenVideo.addActionListener(this);
+        subQuiz.addActionListener(this);
+        subQuiz.setEnabled(false);
+        subDownload.addActionListener(this);
+        subReload.addActionListener(this);
         subBack.addActionListener(this);
-        leftBtns.add(subBack);
+        subOpenVideo.setEnabled(false);
+        subQuiz.setEnabled(false);
+        subDownload.setEnabled(false);
 
-        JPanel rightBtns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        btnRefresh = new JButton("Tải lại");
-        btnRefresh.addActionListener(this);
-        rightBtns.add(btnRefresh);
-
-        footerPanel.add(leftBtns, BorderLayout.WEST);
-        footerPanel.add(rightBtns, BorderLayout.EAST);
-        add(footerPanel, BorderLayout.SOUTH);
+        setLayout(new BorderLayout(12, 12));
+        setBorder(BorderFactory.createEmptyBorder(15, 18, 15, 18));
+        add(headerPanel, BorderLayout.NORTH);
+        add(split, BorderLayout.CENTER);
+        add(footer, BorderLayout.SOUTH);
+        applyFont(this);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        outLesson.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        outDocuments.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        subOpenVideo.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        subQuiz.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        subDownload.setFont(new Font("Segoe UI", Font.BOLD, 13));
     }
 
-    public void loadLessons() {
-        if (course == null || course.getId() == null) {
-            return;
+    private void checkAccess() throws SQLException {
+        if (student == null || student.getId() == null || course == null || course.getId() == null) {
+            throw new SQLException("Thông tin tài khoản hoặc khóa học không hợp lệ.");
         }
-        tableModel.setRowCount(0);
-        selectedLesson = null;
-        updateDetailPanel();
+        try (CourseMemberDAO dao = new CourseMemberDAO()) {
+            CourseMember member = dao.getByStudentAndCourse(student.getId(), course.getId());
+            if (member == null) {
+                throw new SQLException("Bạn chưa ghi danh khóa học này.");
+            }
+            if (member.getStudent().getRole() != UserRole.STUDENT
+                    || !Boolean.TRUE.equals(member.getStudent().getIsActive())) {
+                throw new SQLException("Tài khoản không có quyền học hoặc đã bị khóa.");
+            }
+            CourseStatus status = member.getCourse().getStatus();
+            if (status != CourseStatus.OPEN && status != CourseStatus.CLOSED) {
+                throw new SQLException("Khóa học chưa được xuất bản.");
+            }
+            course.setTitle(member.getCourse().getTitle());
+            course.setStatus(status);
+        }
+    }
 
+    private void loadLessons() throws SQLException {
+        clearLesson();
+        outLessons.clearSelection();
+        lessonModel.clear();
+        lessons.clear();
+        checkAccess();
         try (LessonDAO dao = new LessonDAO()) {
             lessons = dao.getLessonsByCourse(course.getId());
-            for (Lesson l : lessons) {
-                String hasVideo = (l.getVideoUrl() != null && !l.getVideoUrl().isBlank()) ? "Có" : "-";
-                int docCount = (l.getDocuments() != null) ? l.getDocuments().size() : 0;
-                String docStr = docCount > 0 ? (docCount + " tệp") : "-";
+        }
+        for (Lesson lesson : lessons) {
+            lessonModel.addElement(lesson.getOrderIndex() + ". " + lesson.getTitle());
+        }
+        outCourse.setText(course.getTitle());
+        outNotice.setText(lessons.isEmpty() ? "Khóa học hiện chưa có bài học được hiển thị."
+                : "Chọn bài học trong danh sách bên trái.");
+    }
 
-                tableModel.addRow(new Object[]{
-                        l.getOrderIndex(),
-                        l.getTitle(),
-                        hasVideo,
-                        docStr
-                });
+    private Lesson checkLesson() throws SQLException {
+        checkAccess();
+        int selected = outLessons.getSelectedIndex();
+        if (selected < 0) {
+            throw new SQLException("Vui lòng chọn một bài học.");
+        }
+        try (LessonDAO dao = new LessonDAO()) {
+            Lesson lesson = dao.findById(lessons.get(selected).getId());
+            if (lesson == null || !Boolean.TRUE.equals(lesson.getIsVisible())
+                    || !course.getId().equals(lesson.getCourse().getId())) {
+                throw new SQLException("Bài học không còn được cung cấp trong khóa học này.");
             }
-
-            if (!lessons.isEmpty()) {
-                tblLessons.setRowSelectionInterval(0, 0);
-            }
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Không thể tải danh sách bài học: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return lesson;
         }
     }
 
-    private void onLessonSelected() {
-        int row = tblLessons.getSelectedRow();
-        if (row >= 0 && row < lessons.size()) {
-            selectedLesson = lessons.get(row);
+    private void clearLesson() {
+        subOpenVideo.setEnabled(false);
+        subQuiz.setEnabled(false);
+        subDownload.setEnabled(false);
+        outLesson.setText("Chọn một bài học để bắt đầu.");
+        outVideoUrl.setText("");
+        documentModel.setRowCount(0);
+        documents.clear();
+    }
+
+    private URI getVideoUri(String url) {
+        if (url == null || url.isBlank()) {
+            throw new IllegalArgumentException("Bài học chưa có đường dẫn video.");
+        }
+        URI uri = URI.create(url.strip());
+        String scheme = uri.getScheme();
+        String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        boolean shortUrl = host.equals("youtu.be") || host.equals("www.youtu.be");
+        boolean youtube = host.equals("youtube.com") || host.equals("www.youtube.com")
+                || host.equals("m.youtube.com") || host.equals("youtube-nocookie.com")
+                || host.equals("www.youtube-nocookie.com");
+        if ((!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme))
+                || (!shortUrl && !youtube) || uri.getUserInfo() != null) {
+            throw new IllegalArgumentException("Đường dẫn video phải là liên kết YouTube hợp lệ.");
+        }
+        String path = uri.getPath() == null ? "" : uri.getPath();
+        String videoId = "";
+        if (shortUrl) {
+            videoId = path.startsWith("/") ? path.substring(1) : path;
+        } else if (path.equals("/watch") && uri.getRawQuery() != null) {
+            for (String parameter : uri.getRawQuery().split("&")) {
+                String[] pair = parameter.split("=", 2);
+                if (pair.length == 2 && pair[0].equals("v")) {
+                    videoId = URLDecoder.decode(pair[1], StandardCharsets.UTF_8);
+                }
+            }
         } else {
-            selectedLesson = null;
-        }
-        updateDetailPanel();
-    }
-
-    private void updateDetailPanel() {
-        if (selectedLesson == null) {
-            lblSelectedTitle.setText("Chọn một bài học từ danh sách bên trái");
-            txtVideoUrl.setText("Chưa chọn bài học");
-            lblDocCount.setText("Tài liệu đính kèm: Chưa chọn bài học");
-            btnWatchVideo.setEnabled(false);
-            btnOpenDoc.setEnabled(false);
-            btnTakeQuiz.setEnabled(false);
-            return;
-        }
-
-        lblSelectedTitle.setText("Bài " + selectedLesson.getOrderIndex() + ": " + selectedLesson.getTitle());
-
-        String videoUrl = selectedLesson.getVideoUrl();
-        boolean hasVideo = (videoUrl != null && !videoUrl.isBlank());
-        txtVideoUrl.setText(hasVideo ? videoUrl : "Không có video bài giảng");
-        btnWatchVideo.setEnabled(hasVideo);
-
-        List<LessonDocument> docs = selectedLesson.getDocuments();
-        int docCount = docs != null ? docs.size() : 0;
-        if (docCount == 0) {
-            lblDocCount.setText("Tài liệu đính kèm: Không có");
-            btnOpenDoc.setEnabled(false);
-        } else {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < docs.size(); i++) {
-                if (i > 0) sb.append(", ");
-                sb.append(docs.get(i).getName());
+            String[] parts = path.split("/");
+            if (parts.length == 3 && (parts[1].equals("embed") || parts[1].equals("shorts")
+                    || parts[1].equals("live"))) {
+                videoId = parts[2];
             }
-            lblDocCount.setText("Tài liệu (" + docCount + "): " + sb);
-            btnOpenDoc.setEnabled(true);
         }
-
-        btnTakeQuiz.setEnabled(true);
+        if (!videoId.matches("[A-Za-z0-9_-]{11}")) {
+            throw new IllegalArgumentException("Không tìm thấy mã video YouTube hợp lệ trong đường dẫn.");
+        }
+        return uri;
     }
 
-    private void openVideo() {
-        if (selectedLesson == null) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn một bài học từ danh sách!", "Thông báo", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        String url = selectedLesson.getVideoUrl();
-        if (url == null || url.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Bài học này không có video bài giảng.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        String cleanUrl = url.trim();
-        if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
-            cleanUrl = "https://" + cleanUrl;
-        }
-        try {
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(new URI(cleanUrl));
-            } else {
-                Runtime.getRuntime().exec(new String[]{"xdg-open", cleanUrl});
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Không thể mở trình duyệt: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void openDocument() {
-        if (selectedLesson == null) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn một bài học từ danh sách!", "Thông báo", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        List<LessonDocument> docs = selectedLesson.getDocuments();
-        if (docs == null || docs.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Bài học này không có tài liệu đính kèm.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-
-        LessonDocument docToOpen = docs.get(0);
-        if (docs.size() > 1) {
-            String[] docNames = docs.stream().map(LessonDocument::getName).toArray(String[]::new);
-            String selected = (String) JOptionPane.showInputDialog(
-                    this,
-                    "Chọn tài liệu cần mở:",
-                    "Tài liệu bài học",
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    docNames,
-                    docNames[0]
-            );
-            if (selected == null) return;
-            for (LessonDocument d : docs) {
-                if (d.getName().equals(selected)) {
-                    docToOpen = d;
+    private void downloadDocument(Long documentId, Path destination, boolean overwrite) throws SQLException, IOException {
+        Lesson lesson = checkLesson();
+        LessonDocument document = null;
+        try (LessonDocumentDAO dao = new LessonDocumentDAO()) {
+            for (LessonDocument candidate : dao.getDocumentsByLesson(lesson.getId())) {
+                if (documentId.equals(candidate.getId()) && Boolean.TRUE.equals(candidate.getIsAvailable())) {
+                    document = candidate;
                     break;
                 }
             }
         }
-
-        File file = new File(docToOpen.getFilePath());
-        if (!file.exists()) {
-            JOptionPane.showMessageDialog(this, "File tài liệu không tồn tại trên hệ thống:\n" + docToOpen.getFilePath(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-            return;
+        if (document == null) {
+            throw new SQLException("Tài liệu không còn được cung cấp cho bài học này.");
         }
-        try {
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-                Desktop.getDesktop().open(file);
-            } else {
-                Runtime.getRuntime().exec(new String[]{"xdg-open", file.getAbsolutePath()});
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Không thể mở file tài liệu: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        Path source = Path.of(document.getFilePath()).toRealPath();
+        if (!Files.isRegularFile(source)) {
+            throw new IOException("Không tìm thấy file tài liệu.");
         }
-    }
-
-    private void openQuiz() {
-        if (selectedLesson == null) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn một bài học từ danh sách!", "Thông báo", JOptionPane.WARNING_MESSAGE);
-            return;
+        if (Files.exists(destination) && !Files.isRegularFile(destination)) {
+            throw new IOException("Vui lòng chọn tên file để lưu, không chọn thư mục.");
         }
-        new QuizListFrm(student, selectedLesson).setVisible(true);
+        if (Files.exists(destination) && Files.isSameFile(source, destination)) {
+            throw new IOException("Vui lòng chọn nơi lưu khác với file tài liệu gốc.");
+        }
+        if (overwrite) {
+            Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
+        } else {
+            Files.copy(source, destination);
+        }
     }
 
     @Override
@@ -396,14 +315,99 @@ public class CourseLearningFrm extends JPanel implements ActionListener {
             } else {
                 MainFrm.showScreen(this, parentFrame, "Chi tiết khóa học");
             }
-        } else if (event.getSource() == btnWatchVideo) {
-            openVideo();
-        } else if (event.getSource() == btnOpenDoc) {
-            openDocument();
-        } else if (event.getSource() == btnTakeQuiz) {
-            openQuiz();
-        } else if (event.getSource() == btnRefresh) {
-            loadLessons();
+        } else if (event.getSource() == subReload) {
+            try {
+                loadLessons();
+            } catch (SQLException e) {
+                outNotice.setText(e.getMessage());
+                JOptionPane.showMessageDialog(this, e.getMessage(), "Không thể tải bài học", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if ("lesson".equals(event.getActionCommand())) {
+            clearLesson();
+            try {
+                Lesson lesson = checkLesson();
+                try (LessonDocumentDAO dao = new LessonDocumentDAO()) {
+                    for (LessonDocument document : dao.getDocumentsByLesson(lesson.getId())) {
+                        if (Boolean.TRUE.equals(document.getIsAvailable())) {
+                            documents.add(document);
+                            long size = document.getFileSize() == null ? 0 : document.getFileSize();
+                            String sizeText = size >= 1024 * 1024
+                                    ? String.format(Locale.ROOT, "%.2f MB", size / (1024.0 * 1024))
+                                    : size >= 1024 ? String.format(Locale.ROOT, "%.1f KB", size / 1024.0)
+                                    : size + " B";
+                            documentModel.addRow(new Object[]{document.getName(), sizeText});
+                        }
+                    }
+                }
+                outLesson.setText(lesson.getOrderIndex() + ". " + lesson.getTitle());
+                outVideoUrl.setText(lesson.getVideoUrl());
+                subOpenVideo.setEnabled(true);
+                subQuiz.setEnabled(true);
+                outNotice.setText(documents.isEmpty() ? "Bài học này chưa có tài liệu được cung cấp."
+                        : "Chọn tài liệu rồi bấm Tải tài liệu để lưu về máy.");
+            } catch (SQLException e) {
+                clearLesson();
+                outNotice.setText(e.getMessage());
+                JOptionPane.showMessageDialog(this, e.getMessage(), "Không thể mở bài học", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (event.getSource() == subQuiz) {
+            try {
+                Lesson lesson = checkLesson();
+                new QuizListFrm(student, lesson).setVisible(true);
+            } catch (SQLException | IllegalStateException e) {
+                outNotice.setText(e.getMessage());
+                JOptionPane.showMessageDialog(this, e.getMessage(), "Không thể mở bài kiểm tra", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (event.getSource() == subOpenVideo) {
+            try {
+                URI uri = getVideoUri(checkLesson().getVideoUrl());
+                if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                    throw new UnsupportedOperationException("Máy tính không hỗ trợ mở trình duyệt mặc định.");
+                }
+                Desktop.getDesktop().browse(uri);
+                outNotice.setText("Đã gửi yêu cầu mở video. Cần kết nối Internet để xem YouTube.");
+            } catch (SQLException | IOException | IllegalArgumentException | UnsupportedOperationException | SecurityException e) {
+                outNotice.setText(e.getMessage());
+                JOptionPane.showMessageDialog(this, e.getMessage(), "Không thể mở video", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (event.getSource() == subDownload) {
+            int selected = outDocuments.getSelectedRow();
+            if (selected < 0) {
+                return;
+            }
+            LessonDocument document = documents.get(outDocuments.convertRowIndexToModel(selected));
+            try {
+                checkLesson();
+                JFileChooser chooser = new JFileChooser();
+                chooser.setDialogTitle("Lưu tài liệu bài học");
+                chooser.setSelectedFile(new File(Path.of(document.getName()).getFileName().toString()));
+                if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+                    return;
+                }
+                Path destination = chooser.getSelectedFile().toPath();
+                boolean overwrite = Files.exists(destination);
+                if (overwrite && JOptionPane.showConfirmDialog(this, "File đã tồn tại. Bạn muốn ghi đè?",
+                        "Xác nhận ghi đè", JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+                    return;
+                }
+                downloadDocument(document.getId(), destination, overwrite);
+                outNotice.setText("Đã tải tài liệu: " + document.getName());
+                JOptionPane.showMessageDialog(this, "Tải tài liệu thành công.");
+            } catch (SQLException | IOException | IllegalArgumentException | SecurityException e) {
+                outNotice.setText("Tải tài liệu thất bại: " + e.getMessage());
+                JOptionPane.showMessageDialog(this, "Tải tài liệu thất bại: " + e.getMessage(),
+                        "Không thể tải tài liệu", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
+
+    private void applyFont(Component component) {
+        component.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                applyFont(child);
+            }
+        }
+    }
+
 }

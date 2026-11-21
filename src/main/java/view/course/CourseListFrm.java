@@ -4,6 +4,11 @@ import dao.CategoryDAO;
 import dao.CourseDAO;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -81,14 +86,31 @@ public class CourseListFrm extends JPanel implements ActionListener {
     }
 
     private void initComponents() {
-        JPanel filters = new JPanel();
-        filters.add(new JLabel("Tên khóa học:"));
+        JPanel headerPanel = new JPanel(new BorderLayout(4, 4));
+        headerPanel.setBorder(BorderFactory.createEtchedBorder());
+        JPanel headerContent = new JPanel(new BorderLayout(4, 4));
+        headerContent.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
+        JLabel title = new JLabel("KHÓA HỌC ĐANG MỞ GHI DANH");
+        String studentName = student.getFullName() == null ? "Học sinh" : student.getFullName();
+        headerContent.add(title, BorderLayout.NORTH);
+        headerContent.add(new JLabel("Học sinh: " + studentName
+                + " | Tìm kiếm và ghi danh các khóa học miễn phí."), BorderLayout.SOUTH);
+        headerPanel.add(headerContent, BorderLayout.CENTER);
+
+        JPanel filters = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 6));
+        filters.setBorder(BorderFactory.createTitledBorder("Bộ lọc và tìm kiếm"));
+        filters.add(new JLabel("Từ khóa:"));
+        inKeyword.setPreferredSize(new Dimension(180, 26));
         filters.add(inKeyword);
         filters.add(new JLabel("Danh mục:"));
+        inoutCategory.setPreferredSize(new Dimension(170, 26));
         filters.add(inoutCategory);
         filters.add(subSearch);
         subSearch.addActionListener(this);
         subBack.addActionListener(this);
+        JPanel topPanel = new JPanel(new BorderLayout(8, 8));
+        topPanel.add(headerPanel, BorderLayout.NORTH);
+        topPanel.add(filters, BorderLayout.SOUTH);
 
         outsubCourses.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         outsubCourses.setRowHeight(68);
@@ -105,19 +127,25 @@ public class CourseListFrm extends JPanel implements ActionListener {
                 }
             }
         });
+        JScrollPane scrollPane = new JScrollPane(outsubCourses);
+        scrollPane.setColumnHeaderView(outsubCourses.getTableHeader());
+        scrollPane.setBorder(BorderFactory.createTitledBorder("Danh sách khóa học"));
 
-        JPanel buttons = new JPanel();
-        buttons.add(subBack);
-        JPanel footer = new JPanel(new BorderLayout());
+        JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightActions.add(subBack);
+        JPanel footer = new JPanel(new BorderLayout(8, 8));
         footer.add(outNotice, BorderLayout.NORTH);
-        footer.add(buttons, BorderLayout.SOUTH);
+        footer.add(rightActions, BorderLayout.SOUTH);
 
-        JPanel content = new JPanel(new BorderLayout(10, 15));
-        content.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        content.add(filters, BorderLayout.NORTH);
-        content.add(new JScrollPane(outsubCourses), BorderLayout.CENTER);
+        JPanel content = new JPanel(new BorderLayout(12, 12));
+        content.setBorder(BorderFactory.createEmptyBorder(15, 18, 15, 18));
+        content.add(topPanel, BorderLayout.NORTH);
+        content.add(scrollPane, BorderLayout.CENTER);
         content.add(footer, BorderLayout.SOUTH);
         add(content, BorderLayout.CENTER);
+        applyFont(this);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        outsubCourses.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
     }
 
     private void displayCourses() {
@@ -194,4 +222,14 @@ public class CourseListFrm extends JPanel implements ActionListener {
         }
         return new ImageIcon(image.getScaledInstance(width, height, Image.SCALE_SMOOTH));
     }
+
+    private void applyFont(Component component) {
+        component.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                applyFont(child);
+            }
+        }
+    }
+
 }

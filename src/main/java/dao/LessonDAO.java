@@ -70,6 +70,30 @@ public class LessonDAO extends DAO {
         return lessons;
     }
 
+    public Lesson findById(Long id) throws SQLException {
+        String sql = "SELECT * FROM lessons WHERE id = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setObject(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Course course = new Course();
+                    course.setId(rs.getLong("course_id"));
+
+                    Lesson lesson = new Lesson();
+                    lesson.setId(rs.getLong("id"));
+                    lesson.setTitle(rs.getString("title"));
+                    lesson.setVideoUrl(rs.getString("video_url"));
+                    lesson.setOrderIndex(rs.getInt("order_index"));
+                    lesson.setIsVisible(rs.getBoolean("is_visible"));
+                    lesson.setCourse(course);
+                    lesson.setDocuments(getDocumentsOfLesson(lesson.getId()));
+                    return lesson;
+                }
+            }
+        }
+        return null;
+    }
+
     public boolean addLesson(Lesson lesson, Long courseId) throws SQLException {
         String sql = "INSERT INTO lessons (title, video_url, order_index, is_visible, course_id) "
                 + "VALUES (?, ?, ?, ?, ?)";
@@ -115,26 +139,6 @@ public class LessonDAO extends DAO {
             }
         }
         return 1;
-    }
-
-    public Lesson findById(Long id) throws SQLException {
-        String sql = "SELECT id, title, video_url, order_index, is_visible, course_id FROM lessons WHERE id = ?";
-        try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setLong(1, id);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Lesson lesson = new Lesson();
-                    lesson.setId(rs.getLong("id"));
-                    lesson.setTitle(rs.getString("title"));
-                    lesson.setVideoUrl(rs.getString("video_url"));
-                    lesson.setOrderIndex(rs.getInt("order_index"));
-                    lesson.setIsVisible(rs.getBoolean("is_visible"));
-                    lesson.setDocuments(getDocumentsOfLesson(lesson.getId()));
-                    return lesson;
-                }
-            }
-        }
-        return null;
     }
 
     public List<LessonDocument> getDocumentsOfLesson(Long lessonId) throws SQLException {
