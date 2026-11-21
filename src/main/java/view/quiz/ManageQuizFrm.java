@@ -20,6 +20,9 @@ public class ManageQuizFrm extends JFrame implements ActionListener {
         initComponents();
     }
 
+    public void loadQuizzes() {
+    }
+
     private void initComponents() {
         // TODO: Tạo thành phần Swing, bố trí giao diện và đăng ký listener.
     }
