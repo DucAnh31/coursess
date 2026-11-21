@@ -2,7 +2,7 @@ package app;
 
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
-import view.MainFrm;
+import view.course.TeacherCourseListFrm;
 
 public final class Main {
     private Main() {
@@ -15,7 +15,7 @@ public final class Main {
             } catch (Exception e) {
                 // Giữ giao diện Swing mặc định nếu hệ điều hành không có look and feel.
             }
-            new MainFrm().setVisible(true);
+            new TeacherCourseListFrm().setVisible(true);
         });
     }
 }
