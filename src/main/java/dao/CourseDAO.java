@@ -141,7 +141,8 @@ public class CourseDAO extends DAO {
     }
 
     public Course getPublicDetail(Long courseId) throws SQLException {
-        return findById(courseId);
+        Course course = findById(courseId);
+        return course != null && course.getStatus() != CourseStatus.DRAFT ? course : null;
     }
 
     public int getLessonCount(Long courseId) throws SQLException {
