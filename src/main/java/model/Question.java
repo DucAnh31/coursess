@@ -13,6 +13,14 @@ public class Question {
     public Question() {
     }
 
+    public Question(String content, Integer orderIndex, List<QuestionOption> options) {
+        this.content = content;
+        this.orderIndex = orderIndex;
+        if (options != null) {
+            this.options = options;
+        }
+    }
+
     public Long getId() {
         return id;
     }

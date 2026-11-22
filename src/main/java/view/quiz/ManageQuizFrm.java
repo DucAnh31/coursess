@@ -1,10 +1,16 @@
 package view.quiz;
 
+import dao.QuizAttemptDAO;
+import dao.QuizDAO;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
-import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.SQLException;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -13,120 +19,287 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import model.Lesson;
+import model.Quiz;
 import model.User;
+import model.enums.QuizStatus;
 
 public class ManageQuizFrm extends JFrame implements ActionListener {
-    private final User teacher;
-    private final Lesson lesson;
+    private final Long lessonId;
+    private final Long teacherId;
+    private List<Quiz> quizList = new ArrayList<>();
 
-    private JTextField txtQuizTitle;
-    private JTable tblQuestions;
-    private DefaultTableModel tableModel;
-    private JButton btnAddQuestion;
-    private JButton btnSaveQuiz;
-    private JButton btnClose;
+    private QuizDAO quizDAO;
+    private QuizAttemptDAO quizAttemptDAO;
+
+    private JLabel lblHeader;
+    private JTable tblQuizzes;
+    private DefaultTableModel modelQuizzes;
+    private JLabel lblNotice;
+    private JButton btnCreateQuiz;
+    private JButton btnEditQuiz;
+    private JButton btnCopyQuiz;
+    private JButton btnCloseQuiz;
+    private JButton btnBack;
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
+
+    public ManageQuizFrm(Long lessonId, Long teacherId) {
+        super("Quản lý danh sách quiz của bài học");
+        this.lessonId = lessonId != null ? lessonId : 1L;
+        this.teacherId = teacherId != null ? teacherId : 2L;
+
+        try {
+            this.quizDAO = new QuizDAO();
+            this.quizAttemptDAO = new QuizAttemptDAO();
+        } catch (SQLException e) {
+            if (!java.awt.GraphicsEnvironment.isHeadless()) {
+                JOptionPane.showMessageDialog(this, "Lỗi kết nối cơ sở dữ liệu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+
+        initComponents();
+        loadQuizzes();
+    }
 
     public ManageQuizFrm(User teacher, Lesson lesson) {
-        super("Tạo & Quản lý quiz - COURSESS");
-        this.teacher = teacher;
-        this.lesson = lesson;
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-        setSize(800, 520);
-        setLocationRelativeTo(null);
-        initComponents();
+        this(lesson != null ? lesson.getId() : 1L,
+             teacher != null ? teacher.getId() : 2L);
     }
 
     private void initComponents() {
-        JPanel mainPanel = new JPanel(new BorderLayout(12, 12));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 18, 15, 18));
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setSize(880, 520);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout(10, 10));
 
-        JPanel headerPanel = new JPanel(new BorderLayout(4, 4));
-        headerPanel.setBorder(BorderFactory.createEtchedBorder());
-        JPanel headerContent = new JPanel(new BorderLayout(4, 4));
-        headerContent.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
+        JPanel pnlNorth = new JPanel(new BorderLayout(5, 5));
+        pnlNorth.setBorder(BorderFactory.createEmptyBorder(10, 15, 5, 15));
 
-        JLabel lblHeader = new JLabel("TẠO & QUẢN LÝ QUIZ");
-        lblHeader.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        lblHeader = new JLabel("Danh sách đề thi Quiz - Mã bài học: " + lessonId);
+        pnlNorth.add(lblHeader, BorderLayout.WEST);
+        add(pnlNorth, BorderLayout.NORTH);
 
-        String lessonTitle = (lesson != null && lesson.getTitle() != null) ? lesson.getTitle() : "Chưa xác định";
-        JLabel lblSub = new JLabel("Bài học: " + lessonTitle + " | Giảng viên: " + (teacher != null ? teacher.getFullName() : ""));
-        lblSub.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        JPanel pnlCenter = new JPanel(new BorderLayout(5, 5));
+        pnlCenter.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15));
 
-        headerContent.add(lblHeader, BorderLayout.NORTH);
-        headerContent.add(lblSub, BorderLayout.SOUTH);
-        headerPanel.add(headerContent, BorderLayout.CENTER);
-
-        JPanel centerPanel = new JPanel(new BorderLayout(10, 10));
-
-        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
-        titlePanel.setBorder(BorderFactory.createTitledBorder("Thông tin bài kiểm tra"));
-        JLabel lblTitle = new JLabel("Tiêu đề Quiz:");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        txtQuizTitle = new JTextField(30);
-        txtQuizTitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        txtQuizTitle.setText("Quiz ôn tập - " + lessonTitle);
-        titlePanel.add(lblTitle);
-        titlePanel.add(txtQuizTitle);
-
-        String[] columns = {"STT", "Nội dung câu hỏi", "Số phương án", "Đáp án đúng"};
-        tableModel = new DefaultTableModel(columns, 0) {
+        String[] columns = {"ID", "Tiêu đề quiz", "Trạng thái", "Số câu", "Lượt làm", "Ngày xuất bản"};
+        modelQuizzes = new DefaultTableModel(columns, 0) {
             @Override
-            public boolean isCellEditable(int row, int col) {
+            public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        tblQuestions = new JTable(tableModel);
-        tblQuestions.setRowHeight(26);
-        tblQuestions.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tblQuestions.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
 
-        JScrollPane scrollPane = new JScrollPane(tblQuestions);
-        scrollPane.setBorder(BorderFactory.createTitledBorder("Danh sách câu hỏi"));
+        tblQuizzes = new JTable(modelQuizzes);
+        tblQuizzes.setRowHeight(24);
+        tblQuizzes.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        centerPanel.add(titlePanel, BorderLayout.NORTH);
-        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        tblQuizzes.getColumnModel().getColumn(0).setPreferredWidth(50);
+        tblQuizzes.getColumnModel().getColumn(0).setMaxWidth(70);
+        tblQuizzes.getColumnModel().getColumn(1).setPreferredWidth(320);
+        tblQuizzes.getColumnModel().getColumn(2).setPreferredWidth(100);
+        tblQuizzes.getColumnModel().getColumn(3).setPreferredWidth(70);
+        tblQuizzes.getColumnModel().getColumn(4).setPreferredWidth(80);
+        tblQuizzes.getColumnModel().getColumn(5).setPreferredWidth(150);
 
-        JPanel bottomPanel = new JPanel(new BorderLayout());
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        tblQuizzes.getColumnModel().getColumn(0).setCellRenderer(centerRenderer);
+        tblQuizzes.getColumnModel().getColumn(2).setCellRenderer(centerRenderer);
+        tblQuizzes.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+        tblQuizzes.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
+        tblQuizzes.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
 
-        JPanel leftActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        btnAddQuestion = new JButton("+ Thêm câu hỏi");
-        btnAddQuestion.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        btnAddQuestion.addActionListener(this);
-        leftActions.add(btnAddQuestion);
+        pnlCenter.add(new JScrollPane(tblQuizzes), BorderLayout.CENTER);
 
-        JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        btnSaveQuiz = new JButton("Lưu quiz");
-        btnSaveQuiz.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnSaveQuiz.addActionListener(this);
+        lblNotice = new JLabel("Chọn một bài quiz trên bảng để thực hiện các chức năng.");
+        pnlCenter.add(lblNotice, BorderLayout.SOUTH);
+        add(pnlCenter, BorderLayout.CENTER);
 
-        btnClose = new JButton("Đóng");
-        btnClose.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        btnClose.addActionListener(this);
+        JPanel pnlSouth = new JPanel(new BorderLayout());
+        pnlSouth.setBorder(BorderFactory.createEmptyBorder(5, 15, 10, 15));
 
-        rightActions.add(btnSaveQuiz);
-        rightActions.add(btnClose);
+        btnBack = new JButton("Quay lại");
+        btnBack.addActionListener(this);
+        pnlSouth.add(btnBack, BorderLayout.WEST);
 
-        bottomPanel.add(leftActions, BorderLayout.WEST);
-        bottomPanel.add(rightActions, BorderLayout.EAST);
+        JPanel pnlActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        btnCreateQuiz = new JButton("Tạo quiz mới");
+        btnEditQuiz = new JButton("Sửa quiz");
+        btnCopyQuiz = new JButton("Sao chép quiz");
+        btnCloseQuiz = new JButton("Đóng quiz");
 
-        mainPanel.add(headerPanel, BorderLayout.NORTH);
-        mainPanel.add(centerPanel, BorderLayout.CENTER);
-        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+        btnCreateQuiz.addActionListener(this);
+        btnEditQuiz.addActionListener(this);
+        btnCopyQuiz.addActionListener(this);
+        btnCloseQuiz.addActionListener(this);
 
-        setContentPane(mainPanel);
+        pnlActions.add(btnCreateQuiz);
+        pnlActions.add(btnEditQuiz);
+        pnlActions.add(btnCopyQuiz);
+        pnlActions.add(btnCloseQuiz);
+        pnlSouth.add(pnlActions, BorderLayout.EAST);
+
+        add(pnlSouth, BorderLayout.SOUTH);
+    }
+
+    public void loadQuizzes() {
+        if (quizDAO == null) {
+            return;
+        }
+        try {
+            this.quizList = quizDAO.getQuizzesByLesson(this.lessonId);
+            modelQuizzes.setRowCount(0);
+
+            if (this.quizList != null) {
+                for (Quiz q : this.quizList) {
+                    int questionCount = q.getQuestions() != null ? q.getQuestions().size() : 0;
+                    int attemptCount = 0;
+                    if (quizAttemptDAO != null && q.getId() != null) {
+                        attemptCount = quizAttemptDAO.countAttemptsByQuiz(q.getId());
+                    }
+
+                    String publishedText = "-";
+                    if (q.getPublishedAt() != null) {
+                        publishedText = DATE_FORMATTER.format(q.getPublishedAt());
+                    }
+
+                    modelQuizzes.addRow(new Object[]{
+                            q.getId(),
+                            q.getTitle(),
+                            q.getStatus() != null ? q.getStatus().name() : "DRAFT",
+                            questionCount,
+                            attemptCount,
+                            publishedText
+                    });
+                }
+            }
+        } catch (SQLException e) {
+            lblNotice.setText("Lỗi nạp danh sách quiz: " + e.getMessage());
+        }
+    }
+
+    public Quiz getSelectedQuiz() {
+        int selectedRow = tblQuizzes.getSelectedRow();
+        if (selectedRow >= 0 && selectedRow < quizList.size()) {
+            return quizList.get(selectedRow);
+        }
+        return null;
     }
 
     @Override
-    public void actionPerformed(ActionEvent event) {
-        if (event.getSource() == btnAddQuestion) {
-            JOptionPane.showMessageDialog(this, "Giao diện soạn câu hỏi và đáp án chi tiết sẽ do phân hệ Quản lý Quiz hoàn thiện.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-        } else if (event.getSource() == btnSaveQuiz) {
-            JOptionPane.showMessageDialog(this, "Chức năng lưu và xử lý dữ liệu quiz backend sẽ do phân hệ Quản lý Quiz đảm nhiệm.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-        } else if (event.getSource() == btnClose) {
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == btnCreateQuiz) {
+            new CreateQuizFrm(this, this.lessonId, this.teacherId, null).setVisible(true);
+        } else if (e.getSource() == btnEditQuiz) {
+            Quiz selectedQuiz = getSelectedQuiz();
+            if (selectedQuiz == null) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn một bài quiz trên bảng để sửa.", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            int attemptCount = 0;
+            if (quizAttemptDAO != null) {
+                try {
+                    attemptCount = quizAttemptDAO.countAttemptsByQuiz(selectedQuiz.getId());
+                } catch (SQLException ex) {
+                    JOptionPane.showMessageDialog(this, "Lỗi kiểm tra lượt làm bài: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
+
+            if (attemptCount == 0) {
+                new CreateQuizFrm(this, this.lessonId, this.teacherId, selectedQuiz.getId()).setVisible(true);
+            } else {
+                int choice = JOptionPane.showConfirmDialog(this,
+                        "Quiz này đã có " + attemptCount + " lượt làm bài từ sinh viên, không thể sửa trực tiếp để bảo toàn kết quả thi.\n"
+                        + "Bạn có muốn tạo một bản sao độc lập (Bản nháp) để chỉnh sửa không?",
+                        "Cảnh báo quiz đã có lượt làm",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE);
+
+                if (choice == JOptionPane.YES_OPTION) {
+                    try {
+                        Quiz copy = quizDAO.copyQuiz(selectedQuiz.getId(), this.teacherId);
+                        if (copy != null) {
+                            loadQuizzes();
+                            new CreateQuizFrm(this, this.lessonId, this.teacherId, copy.getId()).setVisible(true);
+                        }
+                    } catch (SQLException ex) {
+                        JOptionPane.showMessageDialog(this, "Lỗi sao chép quiz: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }
+        } else if (e.getSource() == btnCopyQuiz) {
+            Quiz selectedQuiz = getSelectedQuiz();
+            if (selectedQuiz == null) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn một bài quiz trên bảng để sao chép.", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            int choice = JOptionPane.showConfirmDialog(this,
+                    "Bạn có chắc muốn sao chép quiz \"" + selectedQuiz.getTitle() + "\" thành bản nháp mới không?",
+                    "Xác nhận sao chép",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (choice == JOptionPane.YES_OPTION) {
+                try {
+                    Quiz copy = quizDAO.copyQuiz(selectedQuiz.getId(), this.teacherId);
+                    if (copy != null) {
+                        loadQuizzes();
+                        JOptionPane.showMessageDialog(this, "Sao chép quiz thành công! Đã tạo bản nháp mới.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                        new CreateQuizFrm(this, this.lessonId, this.teacherId, copy.getId()).setVisible(true);
+                    }
+                } catch (SQLException ex) {
+                    JOptionPane.showMessageDialog(this, "Lỗi sao chép quiz: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        } else if (e.getSource() == btnCloseQuiz) {
+            Quiz selectedQuiz = getSelectedQuiz();
+            if (selectedQuiz == null) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn một bài quiz trên bảng để đóng.", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            if (selectedQuiz.getStatus() == QuizStatus.CLOSED) {
+                JOptionPane.showMessageDialog(this, "Quiz này đã ở trạng thái đóng.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            if (selectedQuiz.getStatus() == QuizStatus.DRAFT) {
+                JOptionPane.showMessageDialog(this, "Quiz đang ở trạng thái Nháp, chưa thể đóng.", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            int choice = JOptionPane.showConfirmDialog(this,
+                    "Bạn có chắc muốn đóng quiz này không?\nSau khi đóng, sinh viên sẽ không thể vào làm bài nữa.",
+                    "Xác nhận đóng quiz",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+
+            if (choice == JOptionPane.YES_OPTION) {
+                try {
+                    boolean ok = quizDAO.closeQuiz(selectedQuiz.getId());
+                    if (ok) {
+                        loadQuizzes();
+                        JOptionPane.showMessageDialog(this, "Đã đóng quiz thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                    }
+                } catch (SQLException ex) {
+                    JOptionPane.showMessageDialog(this, "Lỗi khi đóng quiz: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        } else if (e.getSource() == btnBack) {
             dispose();
         }
+    }
+
+    public static void main(String[] args) {
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            new ManageQuizFrm(1L, 2L).setVisible(true);
+        });
     }
 }

@@ -38,6 +38,7 @@ import model.CourseMember;
 import model.Lesson;
 import model.User;
 import model.enums.CourseStatus;
+import model.enums.UserRole;
 import view.MainFrm;
 
 public class CourseDetailFrm extends JPanel implements ActionListener {
@@ -94,10 +95,13 @@ public class CourseDetailFrm extends JPanel implements ActionListener {
         for (Lesson lesson : this.course.getLessons()) {
             lessonModel.addElement(lesson.getOrderIndex() + ". " + lesson.getTitle());
         }
-        subEnroll.setEnabled(member == null && this.course.getStatus() == CourseStatus.OPEN);
-        subOpenLearning.setEnabled(member != null);
+        boolean isStudent = student != null && student.getRole() == UserRole.STUDENT;
+        subEnroll.setEnabled(isStudent && member == null && this.course.getStatus() == CourseStatus.OPEN);
+        subOpenLearning.setEnabled(isStudent && member != null);
         outEnrollment.setText(member == null ? "Chưa ghi danh" : "Đã ghi danh");
-        if (member == null && this.course.getStatus() == CourseStatus.CLOSED) {
+        if (!isStudent) {
+            outNotice.setText("Chỉ tài khoản học sinh mới được ghi danh và tham gia học.");
+        } else if (member == null && this.course.getStatus() == CourseStatus.CLOSED) {
             outNotice.setText("Khóa học đã ngừng nhận ghi danh mới.");
         }
     }
@@ -180,6 +184,11 @@ public class CourseDetailFrm extends JPanel implements ActionListener {
             MainFrm.showScreen(this, parentFrame, parentFrame instanceof MyCoursesFrm
                     ? "Khóa học đã tham gia" : "Danh sách khóa học");
         } else if (event.getSource() == subEnroll) {
+            if (student == null || student.getRole() != UserRole.STUDENT) {
+                JOptionPane.showMessageDialog(this, "Chỉ tài khoản học sinh mới được ghi danh khóa học.",
+                        "Không có quyền ghi danh", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             try (CourseMemberDAO dao = new CourseMemberDAO()) {
                 member = dao.enroll(student.getId(), course.getId());
                 subEnroll.setEnabled(false);

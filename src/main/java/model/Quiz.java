@@ -19,6 +19,14 @@ public class Quiz {
     public Quiz() {
     }
 
+    public Quiz(String title, QuizStatus status, List<Question> questions) {
+        this.title = title;
+        this.status = status;
+        if (questions != null) {
+            this.questions = questions;
+        }
+    }
+
     public Long getId() {
         return id;
     }
